@@ -375,34 +375,17 @@ function HomePage({ products, categories, go, addToCart }) {
         <h2 className="font-extrabold text-xl mb-6 text-center" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>ليش متجر بطاطا؟</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { icon: Zap, label: "تسليم سريع" },
-            { icon: Shield, label: "تعامل آمن" },
-            { icon: Headphones, label: "دعم العملاء" },
-            { icon: Tag, label: "أسعار منافسة" },
-            { icon: LayoutGrid, label: "منتجات متنوعة" },
+            { icon: Zap, label: "تسليم سريع", go: "faq" },
+            { icon: Shield, label: "تعامل آمن", go: "faq" },
+            { icon: Headphones, label: "دعم العملاء", go: "contact" },
+            { icon: Tag, label: "أسعار منافسة", go: "shop", params: { offersOnly: true } },
+            { icon: LayoutGrid, label: "منتجات متنوعة", go: "shop" },
           ].map((f, i) => (
-            <div key={i} className="flex flex-col items-center gap-2.5 c-surface border c-border-line rounded-2xl py-6 px-2 text-center">
+            <button key={i} onClick={() => go(f.go, f.params)}
+              className="flex flex-col items-center gap-2.5 c-surface border c-border-line hover:c-border-soft rounded-2xl py-6 px-2 text-center transition-colors">
               <f.icon size={22} className="c-text-dim" />
               <span className="c-fs-12-5 font-bold">{f.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* REVIEWS */}
-      <section className="max-w-6xl mx-auto px-4 py-10">
-        <h2 className="font-extrabold text-xl mb-6" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>آراء العملاء</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          {[
-            { name: "فيصل", text: "التسليم كان أسرع من المتوقع والحساب مضبوط 100%.", stars: 5 },
-            { name: "سارة", text: "أسعار ممتازة مقارنة بمتاجر ثانية، وتعامل محترم.", stars: 5 },
-            { name: "عبدالله", text: "طلبت فاكهة Kitsune ووصلتني خلال دقائق.", stars: 4 },
-          ].map((r, i) => (
-            <div key={i} className="c-surface border c-border-line rounded-2xl p-5">
-              <div className="flex gap-0.5 mb-2">{Array.from({ length: 5 }).map((_, s) => <Star key={s} size={14} className={s < r.stars ? "c-fill-text c-text" : "c-text-dim3"} />)}</div>
-              <p className="text-sm c-text-dim leading-7">{r.text}</p>
-              <span className="text-xs font-bold c-text-dim3 mt-3 block">- {r.name}</span>
-            </div>
+            </button>
           ))}
         </div>
       </section>
