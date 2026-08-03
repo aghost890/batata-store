@@ -1,3 +1,5 @@
+import "./globals.css";
+
 export const metadata = {
   title: "متجر بطاطا | Batata Store",
   description: "متجر بطاطا 🥔 — حسابات، فواكه، Pets، أغراض نادرة وخدمات لمابات Roblox المفضلة عندك. متجر مستقل غير تابع لـ Roblox.",
