@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   ShoppingCart, Search, Star, Menu, X, LogIn, Plus, Minus, Trash2,
   Package, Settings, ChevronLeft, ChevronRight, Home as HomeIcon,
@@ -88,21 +89,22 @@ const STATUS_LIST = ["قيد المراجعة", "جاري التجهيز", "تم
 // For a catalog that's truly shared across every visitor (e.g. products an admin
 // adds show up for all customers), swap this for a real backend (Supabase,
 // Firebase, or a small API route + database).
-async function storageGet(key, shared, fallback) {
-  try {
-    if (typeof window === "undefined") return fallback;
-    const raw = window.localStorage.getItem(key);
-    return raw !== null ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+// ---- تحويل بين snake_case (قاعدة البيانات) و camelCase (التطبيق) ----
+function dbToProduct(p) {
+  return { id: p.id, name: p.name, category: p.category, map: p.map, price: Number(p.price), oldPrice: p.old_price != null ? Number(p.old_price) : null, stock: p.stock, rating: Number(p.rating), reviews: p.reviews, emoji: p.emoji, image: p.image, featured: p.featured, description: p.description, delivery: p.delivery };
 }
-async function storageSet(key, value, shared) {
-  try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+function productToDb(p) {
+  return { id: p.id, name: p.name, category: p.category, map: p.map, price: p.price, old_price: p.oldPrice ?? null, stock: p.stock, emoji: p.emoji, image: p.image || null, description: p.description, delivery: p.delivery, featured: !!p.featured };
 }
+function dbToOrder(o) {
+  return { id: o.id, items: o.items, total: Number(o.total), gameId: o.game_id, status: o.status, date: new Date(o.created_at).getTime() };
+}
+
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -303,7 +305,7 @@ function ProductCard({ p, go, addToCart }) {
 }
 
 /* ============================= Home Page ============================= */
-function HomePage({ products, categories, go, addToCart }) {
+function HomePage({ products, categories, reviews, go, addToCart }) {
   const featured = products.filter(p => p.featured);
   const offers = products.filter(p => p.oldPrice);
   const withDiscount = products.map(p => p.oldPrice ? { ...p, discount: Math.round((1 - p.price / p.oldPrice) * 100) } : p);
@@ -389,11 +391,29 @@ function HomePage({ products, categories, go, addToCart }) {
           ))}
         </div>
       </section>
+
+      {/* REVIEWS - حقيقية فقط، مربوطة بطلبات فعلية */}
+      <section className="max-w-6xl mx-auto px-4 py-14">
+        <h2 className="font-extrabold text-xl mb-6" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>آراء العملاء</h2>
+        {reviews && reviews.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-4">
+            {reviews.map(r => (
+              <div key={r.id} className="c-surface border c-border-line rounded-2xl p-5">
+                <div className="flex gap-0.5 mb-2">{Array.from({ length: 5 }).map((_, s) => <Star key={s} size={14} className={s < r.rating ? "c-fill-text c-text" : "c-text-dim3"} />)}</div>
+                <p className="text-sm c-text-dim leading-7">{r.text}</p>
+                <span className="text-xs font-bold c-text-dim3 mt-3 block">- {r.customer_name}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="c-surface border c-border-line rounded-2xl p-8 text-center c-text-dim2 text-sm">
+            لسا ما وصلتنا مراجعات حقيقية — كن أول عميل يقيّم تجربته بعد إتمام طلبك 🥔
+          </div>
+        )}
+      </section>
     </div>
   );
 }
-
-/* ============================= Shop Page ============================= */
 function ShopPage({ products, categories, go, addToCart, initialFilters }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(initialFilters?.category || "all");
@@ -617,7 +637,40 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
 }
 
 /* ============================= Orders Page ============================= */
-function OrdersPage({ orders, go }) {
+function ReviewForm({ orderId, submitReview, onDone }) {
+  const [name, setName] = useState("");
+  const [rating, setRating] = useState(5);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  async function submit() {
+    if (!name.trim() || !text.trim()) return;
+    setSending(true);
+    const ok = await submitReview(orderId, name.trim(), rating, text.trim());
+    setSending(false);
+    if (ok) onDone();
+  }
+  return (
+    <div className="mt-3 pt-3 border-t c-border-line-strong flex flex-col gap-2">
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="اسمك" className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-xs" />
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} onClick={() => setRating(n)} type="button">
+            <Star size={18} className={n <= rating ? "c-fill-text c-text" : "c-text-dim3"} />
+          </button>
+        ))}
+      </div>
+      <textarea value={text} onChange={e => setText(e.target.value)} placeholder="شاركنا تجربتك مع الطلب..." rows={2} className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-xs" />
+      <button onClick={submit} disabled={sending || !name.trim() || !text.trim()} className="py-2 rounded-lg c-bg-text c-text-bg font-extrabold text-xs disabled:opacity-40">
+        {sending ? "جاري الإرسال..." : "إرسال المراجعة"}
+      </button>
+    </div>
+  );
+}
+
+function OrdersPage({ orders, go, submitReview }) {
+  const [reviewingId, setReviewingId] = useState(null);
+  const [reviewedIds, setReviewedIds] = useState([]);
+
   if (orders.length === 0) return (
     <div className="max-w-3xl mx-auto px-4 py-24 text-center">
       <div className="text-5xl mb-4">📦</div>
@@ -642,6 +695,14 @@ function OrdersPage({ orders, go }) {
             <div className="flex justify-between text-sm font-bold pt-2 border-t c-border-line-strong">
               <span className="c-text-dim2">الإجمالي</span><span className="c-text">{o.total} ﷼</span>
             </div>
+
+            {reviewedIds.includes(o.id) ? (
+              <p className="c-fs-11 c-text-dim mt-3 pt-3 border-t c-border-line-strong">✓ شكرًا، تم إرسال مراجعتك لهذا الطلب</p>
+            ) : reviewingId === o.id ? (
+              <ReviewForm orderId={o.id} submitReview={submitReview} onDone={() => { setReviewedIds(p => [...p, o.id]); setReviewingId(null); }} />
+            ) : (
+              <button onClick={() => setReviewingId(o.id)} className="c-fs-11 font-bold c-text-dim mt-3 pt-3 border-t c-border-line-strong w-full text-right">اترك تقييمك لهذا الطلب ✍️</button>
+            )}
           </div>
         ))}
       </div>
@@ -653,6 +714,13 @@ function OrdersPage({ orders, go }) {
 function LoginPage({ login, go }) {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  async function handleSubmit() {
+    if (!phone.trim()) return;
+    setLoading(true);
+    await login(phone.trim(), password);
+    setLoading(false);
+  }
   return (
     <div className="max-w-sm mx-auto px-4 py-16">
       <div className="text-center mb-8">
@@ -669,10 +737,10 @@ function LoginPage({ login, go }) {
           <label className="text-xs font-bold c-text-dim2 block mb-1.5">كلمة المرور</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-3 text-sm outline-none focus:c-border-text" />
         </div>
-        <button onClick={() => phone.trim() && login(phone.trim())} disabled={!phone.trim()}
-          className="w-full mt-2 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">دخول</button>
+        <button onClick={handleSubmit} disabled={!phone.trim() || loading}
+          className="w-full mt-2 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">{loading ? "جاري الدخول..." : "دخول"}</button>
         <p className="text-center c-fs-10-5 c-text-dim3 mt-2 leading-5">
-          نسخة تجريبية: اكتب "admin" في حقل الجوال لدخول لوحة التحكم. لا تُستخدم كلمة المرور فعلياً في هذا النموذج.
+          إذا عندك حساب أدمن، ادخل بالإيميل وكلمة المرور الحقيقيين. غير كذا راح تدخل كزائر للتسوق فقط.
         </p>
       </div>
     </div>
@@ -720,7 +788,7 @@ function ContactPage() {
 }
 
 /* ============================= Admin Dashboard ============================= */
-function AdminPage({ products, setProducts, categories, setCategories, orders, setOrders, addToast }) {
+function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail }) {
   const [tab, setTab] = useState("products");
   const [editing, setEditing] = useState(null);
   const emptyForm = { name: "", category: "accounts", map: "عام", price: "", oldPrice: "", stock: "", emoji: "🥔", image: "", description: "", delivery: "" };
@@ -730,14 +798,29 @@ function AdminPage({ products, setProducts, categories, setCategories, orders, s
   const emptyCatForm = { label: "", sub: "", emoji: "🎮", image: "" };
   const [catForm, setCatForm] = useState(emptyCatForm);
 
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  async function loadOrders() {
+    setOrdersLoading(true);
+    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    if (!error && data) setAdminOrders(data.map(dbToOrder));
+    setOrdersLoading(false);
+  }
+  useEffect(() => { if (tab === "orders" || tab === "stats") loadOrders(); }, [tab]);
+
   const stats = useMemo(() => {
-    const completed = orders.filter(o => o.status === "مكتمل" || o.status === "تم التسليم");
+    const completed = adminOrders.filter(o => o.status === "مكتمل" || o.status === "تم التسليم");
     const revenue = completed.reduce((s, o) => s + o.total, 0);
     const productSales = {};
-    orders.forEach(o => o.items.forEach(i => { productSales[i.product.name] = (productSales[i.product.name] || 0) + i.qty; }));
+    adminOrders.forEach(o => o.items.forEach(i => { productSales[i.product.name] = (productSales[i.product.name] || 0) + i.qty; }));
     const top = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0];
-    return { revenue, count: orders.length, top: top ? top[0] : "—" };
-  }, [orders]);
+    return { revenue, count: adminOrders.length, top: top ? top[0] : "—" };
+  }, [adminOrders]);
 
   function startEdit(p) {
     setEditing(p.id);
@@ -750,51 +833,79 @@ function AdminPage({ products, setProducts, categories, setCategories, orders, s
     setCatForm({ label: c.label, sub: c.sub || "", emoji: c.emoji, image: c.image || "" });
   }
   function startNewCat() { setEditingCat("new"); setCatForm(emptyCatForm); }
-  function saveCategory() {
+
+  async function saveCategory() {
     if (!catForm.label.trim()) { addToast("عبّي اسم القسم", "error"); return; }
     if (editingCat === "new") {
-      const nc = { id: "c" + Date.now(), ...catForm };
-      setCategories(prev => [...prev, nc]);
+      const { error } = await supabase.from("categories").insert({ id: "c" + Date.now(), ...catForm });
+      if (error) { addToast("تعذّر إضافة القسم", "error"); return; }
       addToast("تمت إضافة القسم ✓");
     } else {
-      setCategories(prev => prev.map(c => c.id === editingCat ? { ...c, ...catForm } : c));
+      const { error } = await supabase.from("categories").update(catForm).eq("id", editingCat);
+      if (error) { addToast("تعذّر حفظ القسم", "error"); return; }
       addToast("تم حفظ القسم ✓");
     }
     setEditingCat(null);
+    refreshCategories();
   }
-  function deleteCategory(id) {
-    setCategories(prev => prev.filter(c => c.id !== id));
+  async function deleteCategory(id) {
+    const { error } = await supabase.from("categories").delete().eq("id", id);
+    if (error) { addToast("تعذّر حذف القسم", "error"); return; }
     addToast("تم حذف القسم");
+    refreshCategories();
   }
 
-  function saveProduct() {
+  async function saveProduct() {
     if (!form.name.trim() || !form.price) { addToast("عبّي الاسم والسعر على الأقل", "error"); return; }
     if (editing === "new") {
-      const np = { id: "p" + Date.now(), ...form, image: form.image || null, price: +form.price, oldPrice: form.oldPrice ? +form.oldPrice : null, stock: +form.stock || 0, rating: 5, reviews: 0, featured: false };
-      setProducts(prev => [np, ...prev]);
+      const payload = productToDb({ id: "p" + Date.now(), ...form, price: +form.price, oldPrice: form.oldPrice ? +form.oldPrice : null, stock: +form.stock || 0 });
+      const { error } = await supabase.from("products").insert(payload);
+      if (error) { addToast("تعذّر إضافة المنتج", "error"); return; }
       addToast("تمت إضافة المنتج ✓");
     } else {
-      setProducts(prev => prev.map(p => p.id === editing ? { ...p, ...form, image: form.image || null, price: +form.price, oldPrice: form.oldPrice ? +form.oldPrice : null, stock: +form.stock || 0 } : p));
+      const payload = productToDb({ ...form, price: +form.price, oldPrice: form.oldPrice ? +form.oldPrice : null, stock: +form.stock || 0 });
+      delete payload.id;
+      const { error } = await supabase.from("products").update(payload).eq("id", editing);
+      if (error) { addToast("تعذّر حفظ التعديلات", "error"); return; }
       addToast("تم حفظ التعديلات ✓");
     }
     setEditing(null);
+    refreshProducts();
   }
-  function deleteProduct(id) {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  async function deleteProduct(id) {
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) { addToast("تعذّر حذف المنتج", "error"); return; }
     addToast("تم حذف المنتج");
+    refreshProducts();
   }
-  function updateOrderStatus(id, status) {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+  async function updateOrderStatus(id, status) {
+    const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+    if (error) { addToast("تعذّر تحديث الحالة", "error"); return; }
     addToast("تم تحديث حالة الطلب ✓");
+    loadOrders();
+  }
+
+  async function changePassword() {
+    if (newPassword.length < 6) { addToast("كلمة المرور لازم تكون 6 أحرف على الأقل", "error"); return; }
+    if (newPassword !== confirmPassword) { addToast("كلمتا المرور غير متطابقتين", "error"); return; }
+    setSavingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSavingPassword(false);
+    if (error) { addToast("تعذّر تغيير كلمة المرور: " + error.message, "error"); return; }
+    setNewPassword(""); setConfirmPassword("");
+    addToast("تم تغيير كلمة المرور بنجاح ✓");
   }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="font-extrabold text-2xl mb-2" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>لوحة تحكم المتجر</h1>
-      <p className="text-xs c-text-dim2 mb-6">نسخة تجريبية: البيانات تُخزَّن عبر تخزين الـ Artifact المشترك، وليست مربوطة بخادم حقيقي بعد.</p>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="font-extrabold text-2xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>لوحة تحكم المتجر</h1>
+        <button onClick={logout} className="c-fs-12 font-bold c-text-dim2 hover:c-text px-3 py-2 rounded-lg c-fill">تسجيل خروج</button>
+      </div>
+      <p className="text-xs c-text-dim2 mb-6">مسجّل دخول كـ {userEmail} — البيانات هنا حقيقية ومتصلة بقاعدة بيانات Supabase، تظهر لكل زوار الموقع.</p>
 
-      <div className="flex gap-2 mb-6">
-        {[["products", "المنتجات"], ["categories", "الأقسام"], ["orders", "الطلبات"], ["stats", "الإحصائيات"]].map(([id, label]) => (
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {[["products", "المنتجات"], ["categories", "الأقسام"], ["orders", "الطلبات"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab === id ? "c-bg-text c-text-bg" : "c-fill c-text-dim"}`}>{label}</button>
         ))}
       </div>
@@ -882,8 +993,9 @@ function AdminPage({ products, setProducts, categories, setCategories, orders, s
 
       {tab === "orders" && (
         <div className="flex flex-col gap-2">
-          {orders.length === 0 && <p className="c-text-dim2 text-sm">لا يوجد طلبات بعد.</p>}
-          {[...orders].reverse().map(o => (
+          {ordersLoading && <p className="c-text-dim2 text-sm">جاري التحميل...</p>}
+          {!ordersLoading && adminOrders.length === 0 && <p className="c-text-dim2 text-sm">لا يوجد طلبات بعد.</p>}
+          {adminOrders.map(o => (
             <div key={o.id} className="c-surface border c-border-line rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-extrabold text-sm">طلب #{o.id} — {o.gameId}</span>
@@ -907,6 +1019,28 @@ function AdminPage({ products, setProducts, categories, setCategories, orders, s
           <div className="c-surface border c-border-line rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">إجمالي الطلبات</div><div className="font-extrabold text-2xl c-text">{stats.count}</div></div>
           <div className="c-surface border c-border-line rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الإيرادات (طلبات مكتملة)</div><div className="font-extrabold text-2xl c-text-dim">{stats.revenue} ﷼</div></div>
           <div className="c-surface border c-border-line rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الأكثر مبيعاً</div><div className="font-extrabold text-sm mt-1.5">{stats.top}</div></div>
+        </div>
+      )}
+
+      {tab === "settings" && (
+        <div className="max-w-sm">
+          <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-3">
+            <h3 className="font-extrabold text-sm">تغيير كلمة مرور الأدمن</h3>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">كلمة المرور الجديدة</label>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">تأكيد كلمة المرور</label>
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" />
+            </div>
+            <button onClick={changePassword} disabled={savingPassword} className="py-2.5 rounded-lg c-bg-text c-text-bg font-extrabold text-sm disabled:opacity-50">
+              {savingPassword ? "جاري الحفظ..." : "حفظ كلمة المرور"}
+            </button>
+            <p className="c-fs-10-5 c-text-dim3 leading-5">
+              هذا يغيّر كلمة المرور فعليًا عبر نظام تسجيل الدخول الآمن (Supabase Auth). تغيير البريد الإلكتروني نفسه يحتاج تأكيد عبر بريد إلكتروني جديد، تقدر تسويه من لوحة Supabase مباشرة إذا احتجت.
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -961,8 +1095,9 @@ export default function BatataStore() {
   const [params, setParams] = useState({});
   const [products, setProducts] = useState(SEED_PRODUCTS);
   const [categories, setCategories] = useState(SEED_CATEGORIES);
+  const [reviews, setReviews] = useState([]);
   const [cart, setCart] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState([]); // orders placed THIS session (guest-friendly, no account needed)
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -972,7 +1107,7 @@ export default function BatataStore() {
   const toggleTheme = useCallback(() => {
     setTheme(t => {
       const next = t === "dark" ? "light" : "dark";
-      storageSet("batata:theme", next, false);
+      try { window.localStorage.setItem("batata:theme", next); } catch {}
       return next;
     });
   }, []);
@@ -983,28 +1118,42 @@ export default function BatataStore() {
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2200);
   }, []);
 
-  // load persisted data
+  async function refreshProducts() {
+    const { data } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+    if (data) setProducts(data.map(dbToProduct));
+  }
+  async function refreshCategories() {
+    const { data } = await supabase.from("categories").select("*");
+    if (data && data.length) setCategories(data);
+  }
+  async function refreshReviews() {
+    const { data } = await supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(9);
+    if (data) setReviews(data);
+  }
+
+  // load persisted data + supabase session
   useEffect(() => {
     (async () => {
-      const storedProducts = await storageGet("batata:products", true, null);
-      if (storedProducts) setProducts(storedProducts);
-      const storedCategories = await storageGet("batata:categories", true, null);
-      if (storedCategories) setCategories(storedCategories);
-      const storedTheme = await storageGet("batata:theme", false, null);
-      if (storedTheme === "light" || storedTheme === "dark") setTheme(storedTheme);
-      const session = await storageGet("batata:session", false, null);
-      if (session) {
-        setUser(session);
-        const storedOrders = await storageGet(`batata:orders:${session.name}`, false, []);
-        setOrders(storedOrders);
+      try {
+        const storedTheme = window.localStorage.getItem("batata:theme");
+        if (storedTheme === "light" || storedTheme === "dark") setTheme(storedTheme);
+      } catch {}
+
+      await Promise.all([refreshProducts(), refreshCategories(), refreshReviews()]);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser({ name: session.user.email, isAdmin: true });
       }
       setLoaded(true);
     })();
-  }, []);
 
-  useEffect(() => { if (loaded) storageSet("batata:products", products, true); }, [products, loaded]);
-  useEffect(() => { if (loaded) storageSet("batata:categories", categories, true); }, [categories, loaded]);
-  useEffect(() => { if (loaded && user) storageSet(`batata:orders:${user.name}`, orders, false); }, [orders, loaded, user]);
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) setUser({ name: session.user.email, isAdmin: true });
+      else setUser(u => (u && u.isAdmin ? null : u));
+    });
+    return () => sub?.subscription?.unsubscribe();
+  }, []);
 
   const go = useCallback((p, extraParams) => {
     setPage(p);
@@ -1026,23 +1175,45 @@ export default function BatataStore() {
   }
   function removeFromCart(productId) { setCart(prev => prev.filter(c => c.productId !== productId)); addToast("تم حذف المنتج من السلة"); }
 
-  async function login(phoneOrEmail) {
-    const isAdmin = phoneOrEmail.toLowerCase().includes("admin");
-    const u = { name: isAdmin ? "الأدمن" : phoneOrEmail, isAdmin };
-    setUser(u);
-    await storageSet("batata:session", u, false);
-    const storedOrders = await storageGet(`batata:orders:${u.name}`, false, []);
-    setOrders(storedOrders);
-    addToast(isAdmin ? "أهلاً بك أيها الأدمن 👑" : "تم تسجيل الدخول بنجاح ✓");
-    go(isAdmin ? "admin" : "home");
+  // تسجيل دخول: نحاول الدخول كأدمن حقيقي عبر Supabase Auth، وإذا فشل نعتبره زائر (بدون حساب حقيقي، للتسوق فقط)
+  async function login(emailOrPhone, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email: emailOrPhone, password: password || "" });
+    if (!error && data?.user) {
+      setUser({ name: data.user.email, isAdmin: true });
+      addToast("أهلاً بك أيها الأدمن 👑");
+      go("admin");
+      return;
+    }
+    setUser({ name: emailOrPhone, isAdmin: false });
+    addToast("تم تسجيل الدخول بنجاح ✓");
+    go("home");
   }
 
-  function placeOrder(items, total, gameId) {
-    const order = { id: String(Date.now()).slice(-6), items, total, gameId, status: "قيد المراجعة", date: Date.now() };
+  async function logout() {
+    await supabase.auth.signOut();
+    setUser(null);
+    addToast("تم تسجيل الخروج");
+    go("home");
+  }
+
+  async function placeOrder(items, total, gameId) {
+    const id = String(Date.now()).slice(-6);
+    const dbItems = items.map(i => ({ productId: i.productId, qty: i.qty, product: i.product }));
+    const { error } = await supabase.from("orders").insert({ id, items: dbItems, total, game_id: gameId, status: "قيد المراجعة" });
+    if (error) { addToast("تعذّر إرسال الطلب، حاول مرة ثانية", "error"); return; }
+    const order = { id, items, total, gameId, status: "قيد المراجعة", date: Date.now() };
     setOrders(prev => [...prev, order]);
     setCart([]);
-    addToast("تم إرسال طلبك بنجاح ✓ رقم الطلب #" + order.id);
+    addToast("تم إرسال طلبك بنجاح ✓ رقم الطلب #" + id);
     go("orders");
+  }
+
+  async function submitReview(orderId, customerName, rating, text) {
+    const { error } = await supabase.from("reviews").insert({ order_id: orderId, customer_name: customerName, rating, text });
+    if (error) { addToast("تعذّر إرسال المراجعة", "error"); return false; }
+    addToast("شكرًا لك! تم نشر مراجعتك ✓");
+    refreshReviews();
+    return true;
   }
 
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
@@ -1109,17 +1280,17 @@ export default function BatataStore() {
       <MobileMenu open={menuOpen} close={() => setMenuOpen(false)} go={go} user={user} />
 
       <main>
-        {page === "home" && <HomePage products={products} categories={categories} go={go} addToCart={addToCart} />}
+        {page === "home" && <HomePage products={products} categories={categories} reviews={reviews} go={go} addToCart={addToCart} />}
         {page === "shop" && <ShopPage products={products} categories={categories} go={go} addToCart={addToCart} initialFilters={params} />}
         {page === "product" && <ProductPage products={products} id={params.id} go={go} addToCart={addToCart} />}
         {page === "cart" && <CartPage cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} go={go} />}
         {page === "checkout" && <CheckoutPage cart={cart} products={products} placeOrder={placeOrder} go={go} user={user} />}
-        {page === "orders" && <OrdersPage orders={orders} go={go} />}
+        {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} />}
         {page === "login" && <LoginPage login={login} go={go} />}
         {page === "faq" && <FaqPage />}
         {page === "contact" && <ContactPage />}
         {page === "admin" && (user?.isAdmin
-          ? <AdminPage products={products} setProducts={setProducts} categories={categories} setCategories={setCategories} orders={orders} setOrders={setOrders} addToast={addToast} />
+          ? <AdminPage products={products} categories={categories} refreshProducts={refreshProducts} refreshCategories={refreshCategories} addToast={addToast} logout={logout} userEmail={user.name} />
           : <div className="max-w-md mx-auto px-4 py-24 text-center c-text-dim2">هذه الصفحة خاصة بالأدمن فقط.</div>)}
       </main>
 
