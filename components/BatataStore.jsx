@@ -102,7 +102,7 @@ function productToDb(p) {
   return { id: p.id, name: p.name, category: p.category, map: p.map, price: p.price, old_price: p.oldPrice ?? null, stock: p.stock, emoji: p.emoji, image: p.image || null, description: p.description, delivery: p.delivery, featured: !!p.featured };
 }
 function dbToOrder(o) {
-  return { id: o.id, items: o.items, total: Number(o.total), gameId: o.game_id, status: o.status, date: new Date(o.created_at).getTime() };
+  return { id: o.id, items: o.items, total: Number(o.total), gameId: o.game_id, email: o.email, status: o.status, date: new Date(o.created_at).getTime() };
 }
 
 function fileToDataUrl(file) {
@@ -582,8 +582,14 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(null);
   const [gameId, setGameId] = useState("");
+  const [email, setEmail] = useState("");
   const discountAmount = applied ? Math.round(subtotal * applied.pct) : 0;
   const total = Math.max(0, subtotal - discountAmount);
+
+  const hasAccountItem = items.some(i => i.product.category === "accounts");
+  const hasNonAccountItem = items.some(i => i.product.category !== "accounts");
+  const emailValid = /\S+@\S+\.\S+/.test(email);
+  const canSubmit = (!hasAccountItem || emailValid) && (!hasNonAccountItem || gameId.trim());
 
   if (items.length === 0) return <div className="max-w-3xl mx-auto px-4 py-24 text-center c-text-dim2">لا يوجد منتجات في السلة</div>;
 
@@ -596,10 +602,20 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
     <div className="max-w-2xl mx-auto px-4 py-10">
       <h1 className="font-extrabold text-2xl mb-6" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>إتمام الطلب</h1>
 
-      <div className="c-surface border c-border-line rounded-xl p-4 mb-4">
-        <label className="text-xs font-bold c-text-dim2 block mb-2">معرّف حسابك في اللعبة (Username / User ID)</label>
-        <input value={gameId} onChange={e => setGameId(e.target.value)} placeholder="مثال: Player123" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
-      </div>
+      {hasAccountItem && (
+        <div className="c-surface border c-border-line rounded-xl p-4 mb-4">
+          <label className="text-xs font-bold c-text-dim2 block mb-2">بريدك الإلكتروني (لاستلام بيانات الحساب)</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
+          <p className="c-fs-10-5 c-text-dim3 mt-1.5">طلبك فيه حساب — بنرسل لك اسم المستخدم وكلمة المرور على هذا الإيميل بعد الدفع.</p>
+        </div>
+      )}
+
+      {hasNonAccountItem && (
+        <div className="c-surface border c-border-line rounded-xl p-4 mb-4">
+          <label className="text-xs font-bold c-text-dim2 block mb-2">معرّف حسابك في اللعبة (Username / User ID)</label>
+          <input value={gameId} onChange={e => setGameId(e.target.value)} placeholder="مثال: Player123" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
+        </div>
+      )}
 
       <div className="flex flex-col gap-2 mb-4">
         {items.map(i => (
@@ -627,8 +643,8 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
       </div>
 
       <button
-        onClick={() => { if (!gameId.trim()) return; placeOrder(items, total, gameId); }}
-        disabled={!gameId.trim()}
+        onClick={() => { if (!canSubmit) return; placeOrder(items, total, gameId.trim() || null, email.trim() || null); }}
+        disabled={!canSubmit}
         className="w-full mt-5 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
         تأكيد الطلب والدفع
       </button>
@@ -788,6 +804,44 @@ function ContactPage() {
 }
 
 /* ============================= Admin Dashboard ============================= */
+function SendAccountEmailForm({ order, addToast }) {
+  const [open, setOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function send() {
+    if (!username.trim() || !password.trim()) { addToast("عبّي اسم المستخدم وكلمة المرور", "error"); return; }
+    setSending(true);
+    const { data, error } = await supabase.functions.invoke("send-account-email", {
+      body: { to: order.email, orderId: order.id, username: username.trim(), password: password.trim() },
+    });
+    setSending(false);
+    if (error || data?.error) { addToast("تعذّر إرسال الإيميل، تأكد من إعداد Resend", "error"); return; }
+    setSent(true);
+    setOpen(false);
+    addToast("تم إرسال بيانات الحساب فعليًا ✓");
+  }
+
+  if (sent) return <p className="c-fs-11 c-text-dim mb-2">✓ تم إرسال بيانات الحساب لهذا الطلب</p>;
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)} className="c-fs-11 font-bold c-bg-text c-text-bg px-3 py-1.5 rounded-lg mb-2">📧 إرسال بيانات الحساب</button>
+  );
+
+  return (
+    <div className="c-fill rounded-lg p-3 mb-2 flex flex-col gap-2">
+      <input value={username} onChange={e => setUsername(e.target.value)} placeholder="اسم المستخدم / يوزر الحساب" className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-xs" />
+      <input value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-xs" />
+      <div className="flex gap-2">
+        <button onClick={send} disabled={sending} className="flex-1 py-2 rounded-lg c-bg-text c-text-bg font-extrabold text-xs disabled:opacity-40">{sending ? "جاري الإرسال..." : "إرسال الآن"}</button>
+        <button onClick={() => setOpen(false)} className="px-3 py-2 rounded-lg c-fill text-xs">إلغاء</button>
+      </div>
+    </div>
+  );
+}
+
 function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail }) {
   const [tab, setTab] = useState("products");
   const [editing, setEditing] = useState(null);
@@ -998,9 +1052,15 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
           {adminOrders.map(o => (
             <div key={o.id} className="c-surface border c-border-line rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-extrabold text-sm">طلب #{o.id} — {o.gameId}</span>
+                <span className="font-extrabold text-sm">طلب #{o.id}{o.gameId ? " — " + o.gameId : ""}</span>
                 <span className="font-extrabold c-text text-sm">{o.total} ﷼</span>
               </div>
+              {o.email && (
+                <>
+                  <div className="c-fs-11 c-text-dim2 mb-1">📧 {o.email}</div>
+                  <SendAccountEmailForm order={o} addToast={addToast} />
+                </>
+              )}
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {o.items.map((i, idx) => <span key={idx} className="c-fs-11 c-fill rounded-md px-2 py-1">{i.product.emoji} {i.product.name} ×{i.qty}</span>)}
               </div>
@@ -1196,12 +1256,12 @@ export default function BatataStore() {
     go("home");
   }
 
-  async function placeOrder(items, total, gameId) {
+  async function placeOrder(items, total, gameId, email) {
     const id = String(Date.now()).slice(-6);
     const dbItems = items.map(i => ({ productId: i.productId, qty: i.qty, product: i.product }));
-    const { error } = await supabase.from("orders").insert({ id, items: dbItems, total, game_id: gameId, status: "قيد المراجعة" });
+    const { error } = await supabase.from("orders").insert({ id, items: dbItems, total, game_id: gameId, email, status: "قيد المراجعة" });
     if (error) { addToast("تعذّر إرسال الطلب، حاول مرة ثانية", "error"); return; }
-    const order = { id, items, total, gameId, status: "قيد المراجعة", date: Date.now() };
+    const order = { id, items, total, gameId, email, status: "قيد المراجعة", date: Date.now() };
     setOrders(prev => [...prev, order]);
     setCart([]);
     addToast("تم إرسال طلبك بنجاح ✓ رقم الطلب #" + id);
