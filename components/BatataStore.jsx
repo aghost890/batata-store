@@ -789,17 +789,72 @@ function FaqPage() {
   );
 }
 
-function ContactPage() {
+function ContactPage({ go }) {
   return (
     <div className="max-w-md mx-auto px-4 py-16 text-center">
       <h1 className="font-extrabold text-2xl mb-3" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>تواصل معنا</h1>
       <p className="c-text-dim text-sm mb-8">فريق الدعم جاهز يساعدك بأي استفسار</p>
       <div className="flex flex-col gap-3">
+        <a href="mailto:2aymanm.asd@gmail.com" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5">
+          <span className="c-text">✉️</span> 2aymanm.asd@gmail.com
+        </a>
         <a href="#" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><MessageCircle size={18} className="c-text-dim"/> Discord</a>
         <a href="#" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><Instagram size={18} className="c-text"/> Instagram</a>
         <a href="#" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><TrendingUp size={18} className="c-text"/> TikTok</a>
       </div>
+      <p className="c-fs-11 c-text-dim3 mt-6 leading-6">راجع كمان <button onClick={() => go("terms")} className="underline">شروط الاستخدام</button>، <button onClick={() => go("privacy")} className="underline">سياسة الخصوصية</button>، و<button onClick={() => go("refund")} className="underline">سياسة الاسترجاع</button>.</p>
     </div>
+  );
+}
+
+function LegalPage({ title, children }) {
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-14">
+      <h1 className="font-extrabold text-2xl mb-6" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>{title}</h1>
+      <div className="flex flex-col gap-4 text-sm c-text-dim leading-8">{children}</div>
+    </div>
+  );
+}
+
+function TermsPage() {
+  return (
+    <LegalPage title="شروط الاستخدام">
+      <p>مرحبًا بك في متجر بطاطا. باستخدامك لهذا الموقع فإنك توافق على الشروط التالية:</p>
+      <p><b className="c-text">1. طبيعة المتجر:</b> متجر بطاطا متجر مستقل غير تابع رسميًا لشركة Roblox Corporation أو أي شركة ألعاب أخرى. جميع الأسماء والعلامات التجارية المذكورة ملك لأصحابها وتُستخدم للتعريف فقط.</p>
+      <p><b className="c-text">2. المنتجات:</b> نبيع عناصر وحسابات وخدمات رقمية داخل الألعاب. التسليم يتم إلكترونيًا حسب الطريقة الموضحة بكل منتج.</p>
+      <p><b className="c-text">3. مسؤولية المستخدم:</b> يجب أن تكون بياناتك (معرف اللعبة أو البريد الإلكتروني) صحيحة عند الطلب، ونحن غير مسؤولين عن أي خطأ ناتج عن بيانات غير صحيحة أدخلها المستخدم.</p>
+      <p><b className="c-text">4. الأسعار:</b> جميع الأسعار معروضة بالريال السعودي وقابلة للتغيير دون إشعار مسبق.</p>
+      <p><b className="c-text">5. الاستخدام المقبول:</b> يُمنع استخدام الموقع لأي غرض غير قانوني أو محاولة الإضرار به.</p>
+      <p>لأي استفسار حول هذه الشروط، تواصل معنا عبر صفحة "تواصل معنا".</p>
+    </LegalPage>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <LegalPage title="سياسة الخصوصية">
+      <p>نحترم خصوصيتك ونلتزم بحماية بياناتك الشخصية.</p>
+      <p><b className="c-text">البيانات التي نجمعها:</b> معرف حسابك باللعبة و/أو بريدك الإلكتروني عند إتمام طلب، فقط لغرض تسليم المنتج والتواصل معك بخصوص طلبك.</p>
+      <p><b className="c-text">كيف نستخدم بياناتك:</b> نستخدمها فقط لتنفيذ طلبك وإرسال بيانات المنتج (مثل بيانات حساب) وتقديم الدعم الفني.</p>
+      <p><b className="c-text">مشاركة البيانات:</b> لا نبيع أو نشارك بياناتك مع أي طرف ثالث لأغراض تسويقية. قد نشارك بيانات الدفع الضرورية فقط مع بوابة الدفع المستخدمة لإتمام العملية.</p>
+      <p><b className="c-text">حماية البيانات:</b> بياناتك مخزّنة على خوادم آمنة (Supabase) مع سياسات وصول محدودة.</p>
+      <p>لأي استفسار حول بياناتك، تواصل معنا عبر صفحة "تواصل معنا".</p>
+    </LegalPage>
+  );
+}
+
+function RefundPage() {
+  return (
+    <LegalPage title="سياسة الاسترجاع">
+      <p>نظرًا لطبيعة المنتجات الرقمية، تُطبّق سياسة الاسترجاع التالية:</p>
+      <p><b className="c-text">1. المنتجات الرقمية المُسلَّمة:</b> بما أن المنتجات (عناصر، حسابات، شحن داخل اللعبة) تُسلَّم فور الدفع، لا يمكن استرجاعها بعد التسليم الناجح إلا في حالات الخطأ من طرفنا.</p>
+      <p><b className="c-text">2. حالات الاسترجاع المقبولة:</b>
+        <br />- عدم تسليم المنتج خلال المدة المعلنة
+        <br />- تسليم منتج مختلف عمّا تم طلبه
+        <br />- مشكلة تقنية أدت لعدم استلام بيانات الحساب</p>
+      <p><b className="c-text">3. آلية الاسترجاع:</b> تواصل معنا خلال 48 ساعة من الطلب عبر صفحة "تواصل معنا" مع ذكر رقم الطلب، وسنراجع الحالة ونرد خلال 3 أيام عمل.</p>
+      <p><b className="c-text">4. طريقة الاسترجاع:</b> يتم الاسترجاع بنفس وسيلة الدفع الأصلية خلال مدة تعتمد على بوابة الدفع المستخدمة.</p>
+    </LegalPage>
   );
 }
 
@@ -1128,9 +1183,9 @@ function Footer({ go }) {
         <div>
           <div className="font-bold mb-3 text-xs c-text-dim2">السياسات</div>
           <div className="flex flex-col gap-2 text-xs c-text-dim">
-            <span>سياسة الخصوصية</span>
-            <span>شروط الاستخدام</span>
-            <span>سياسة الاسترجاع</span>
+            <button onClick={() => go("privacy")} className="text-right">سياسة الخصوصية</button>
+            <button onClick={() => go("terms")} className="text-right">شروط الاستخدام</button>
+            <button onClick={() => go("refund")} className="text-right">سياسة الاسترجاع</button>
           </div>
         </div>
         <div>
@@ -1348,7 +1403,10 @@ export default function BatataStore() {
         {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} />}
         {page === "login" && <LoginPage login={login} go={go} />}
         {page === "faq" && <FaqPage />}
-        {page === "contact" && <ContactPage />}
+        {page === "contact" && <ContactPage go={go} />}
+        {page === "terms" && <TermsPage />}
+        {page === "privacy" && <PrivacyPage />}
+        {page === "refund" && <RefundPage />}
         {page === "admin" && (user?.isAdmin
           ? <AdminPage products={products} categories={categories} refreshProducts={refreshProducts} refreshCategories={refreshCategories} addToast={addToast} logout={logout} userEmail={user.name} />
           : <div className="max-w-md mx-auto px-4 py-24 text-center c-text-dim2">هذه الصفحة خاصة بالأدمن فقط.</div>)}
