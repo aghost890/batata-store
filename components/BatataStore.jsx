@@ -673,12 +673,41 @@ function ReviewForm({ orderId, submitReview, onDone }) {
   );
 }
 
-function OrdersPage({ orders, go, submitReview }) {
+function OrdersPage({ orders, go, submitReview, user, deleteAccount }) {
   const [reviewingId, setReviewingId] = useState(null);
   const [reviewedIds, setReviewedIds] = useState([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    await deleteAccount();
+    setDeleting(false);
+  }
+
+  const AccountSettings = user && (
+    <div className="c-surface border c-border-line rounded-xl p-4 mb-6">
+      <h3 className="font-extrabold text-sm mb-1">إعدادات الحساب</h3>
+      <p className="c-fs-11 c-text-dim2 mb-3">مسجل دخول بـ {user.email || user.name}</p>
+      {!confirmingDelete ? (
+        <button onClick={() => setConfirmingDelete(true)} className="c-fs-12 font-bold text-red-500">حذف حسابي نهائيًا</button>
+      ) : (
+        <div className="c-fill rounded-lg p-3 flex flex-col gap-2">
+          <p className="c-fs-11 leading-5">⚠️ هذا الإجراء نهائي ولا يمكن التراجع عنه، بيتم حذف حسابك بالكامل. متأكد؟</p>
+          <div className="flex gap-2">
+            <button onClick={handleDelete} disabled={deleting} className="flex-1 py-2 rounded-lg bg-red-500 text-white font-bold text-xs disabled:opacity-50">
+              {deleting ? "جاري الحذف..." : "نعم، احذف حسابي"}
+            </button>
+            <button onClick={() => setConfirmingDelete(false)} className="flex-1 py-2 rounded-lg c-fill-strong font-bold text-xs">تراجع</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   if (orders.length === 0) return (
     <div className="max-w-3xl mx-auto px-4 py-24 text-center">
+      {AccountSettings}
       <div className="text-5xl mb-4">📦</div>
       <p className="c-text-dim mb-6">ما عندك طلبات لسا</p>
       <button onClick={() => go("shop")} className="px-6 py-3 rounded-xl c-bg-text c-text-bg font-extrabold">تصفح المتجر</button>
@@ -687,6 +716,7 @@ function OrdersPage({ orders, go, submitReview }) {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <h1 className="font-extrabold text-2xl mb-6" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>طلباتي</h1>
+      {AccountSettings}
       <div className="flex flex-col gap-3">
         {[...orders].reverse().map(o => (
           <div key={o.id} className="c-surface border c-border-line rounded-xl p-4">
@@ -1616,6 +1646,19 @@ export default function BatataStore() {
     go("home");
   }
 
+  async function deleteAccount() {
+    const { error } = await supabase.functions.invoke("delete-account");
+    if (error) {
+      addToast("تعذر حذف الحساب، حاول مجددًا أو تواصل مع الدعم", "error");
+      return false;
+    }
+    await supabase.auth.signOut();
+    setUser(null);
+    addToast("تم حذف حسابك نهائيًا");
+    go("home");
+    return true;
+  }
+
   async function placeOrder(items, total, gameId, email) {
     const id = String(Date.now()).slice(-6);
     const dbItems = items.map(i => ({ productId: i.productId, qty: i.qty, product: i.product }));
@@ -1706,7 +1749,7 @@ export default function BatataStore() {
         {page === "product" && <ProductPage products={products} id={params.id} go={go} addToCart={addToCart} />}
         {page === "cart" && <CartPage cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} go={go} />}
         {page === "checkout" && <CheckoutPage cart={cart} products={products} placeOrder={placeOrder} go={go} user={user} />}
-        {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} />}
+        {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} user={user} deleteAccount={deleteAccount} />}
         {page === "login" && <LoginPage login={login} signup={signup} go={go} />}
         {page === "faq" && <FaqPage />}
         {page === "contact" && <ContactPage go={go} settings={settings} />}
