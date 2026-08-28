@@ -8,7 +8,7 @@ export default function RefundPage() {
         <h1 style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif", fontSize: 28, fontWeight: 800, margin: "20px 0 24px" }}>سياسة الاسترجاع</h1>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 15, lineHeight: 1.9, opacity: 0.85 }}>
           <p>نظرًا لطبيعة المنتجات الرقمية، تُطبّق سياسة الاسترجاع التالية:</p>
-          <p><b style={{ color: "#fff" }}>1. المنتجات الرقمية المُسلَّمة:</b> بما أن المنتجات (عناصر، حسابات، شحن داخل اللعبة) تُسلَّم فور الدفع، لا يمكن استرجاعها بعد التسليم الناجح إلا في حالات الخطأ من طرفنا.</p>
+          <p><b style={{ color: "#fff" }}>1. الحسابات المُسلَّمة:</b> بما أن الحسابات تُسلَّم إلكترونيًا فور الدفع، لا يمكن استرجاعها بعد التسليم الناجح إلا في حالات الخطأ من طرفنا.</p>
           <p><b style={{ color: "#fff" }}>2. حالات الاسترجاع المقبولة:</b></p>
           <ul style={{ paddingRight: 20, display: "flex", flexDirection: "column", gap: 6 }}>
             <li>عدم تسليم المنتج خلال المدة المعلنة</li>
