@@ -2,7 +2,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "متجر بطاطا | Batata Store",
-  description: "متجر بطاطا 🥔 — حسابات، فواكه، Pets، أغراض نادرة وخدمات لمابات Roblox المفضلة عندك. متجر مستقل غير تابع لـ Roblox.",
+  description: "متجر بطاطا 🥔 – حسابات جاهزة بمستويات مختلفة، مبتدئين، مميزة، VIP ونخبة",
 };
 
 export default function RootLayout({ children }) {
