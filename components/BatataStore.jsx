@@ -7,7 +7,7 @@ import {
   Package, Settings, ChevronLeft, ChevronRight, Home as HomeIcon,
   Store, Tag, HelpCircle, Phone, Instagram, MessageCircle, Clock,
   Shield, Zap, Headphones, TrendingUp, Sparkles, Edit3, Check, LayoutGrid,
-  Sun, Moon
+  Sun, Moon, Send
 } from "lucide-react";
 
 /* ============================= theme tokens ============================= */
@@ -775,7 +775,7 @@ function FaqPage() {
   );
 }
 
-function ContactPage({ go }) {
+function ContactPage({ go, settings }) {
   return (
     <div className="max-w-md mx-auto px-4 py-16 text-center">
       <h1 className="font-extrabold text-2xl mb-3" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>تواصل معنا</h1>
@@ -784,9 +784,12 @@ function ContactPage({ go }) {
         <a href="mailto:2aymanm.asd@gmail.com" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5">
           <span className="c-text">✉️</span> 2aymanm.asd@gmail.com
         </a>
-        <a href="#" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><MessageCircle size={18} className="c-text-dim"/> Discord</a>
-        <a href="#" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><Instagram size={18} className="c-text"/> Instagram</a>
-        <a href="#" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><TrendingUp size={18} className="c-text"/> TikTok</a>
+        {settings?.whatsapp_url && (
+          <a href={settings.whatsapp_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><Phone size={18} className="c-text-dim"/> واتساب</a>
+        )}
+        <a href={settings?.discord_url || "#"} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><MessageCircle size={18} className="c-text-dim"/> Discord</a>
+        <a href={settings?.instagram_url || "#"} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><Instagram size={18} className="c-text"/> Instagram</a>
+        <a href={settings?.tiktok_url || "#"} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><TrendingUp size={18} className="c-text"/> TikTok</a>
       </div>
       <p className="c-fs-11 c-text-dim3 mt-6 leading-6">راجع كمان <button onClick={() => go("terms")} className="underline">شروط الاستخدام</button>، <button onClick={() => go("privacy")} className="underline">سياسة الخصوصية</button>، و<button onClick={() => go("refund")} className="underline">سياسة الاسترجاع</button>.</p>
     </div>
@@ -883,7 +886,90 @@ function SendAccountEmailForm({ order, addToast }) {
   );
 }
 
-function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail }) {
+function SupportInbox({ addToast }) {
+  const [sessions, setSessions] = useState([]);
+  const [activeSession, setActiveSession] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [reply, setReply] = useState("");
+  const [loading, setLoading] = useState(true);
+  const scrollRef = useRef(null);
+
+  async function loadSessions() {
+    setLoading(true);
+    const { data } = await supabase.from("support_messages").select("*").order("created_at", { ascending: false });
+    if (data) {
+      const bySession = {};
+      data.forEach(m => {
+        if (!bySession[m.session_id]) bySession[m.session_id] = { session_id: m.session_id, last: m, count: 0 };
+        bySession[m.session_id].count++;
+      });
+      setSessions(Object.values(bySession).sort((a, b) => new Date(b.last.created_at) - new Date(a.last.created_at)));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { loadSessions(); }, []);
+
+  useEffect(() => {
+    if (!activeSession) return;
+    (async () => {
+      const { data } = await supabase.from("support_messages").select("*").eq("session_id", activeSession).order("created_at", { ascending: true });
+      if (data) setMessages(data);
+    })();
+    const channel = supabase.channel("admin-chat-" + activeSession)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `session_id=eq.${activeSession}` }, (payload) => {
+        setMessages(prev => [...prev, payload.new]);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [activeSession]);
+
+  useEffect(() => { scrollRef.current?.scrollTo?.(0, scrollRef.current.scrollHeight); }, [messages]);
+
+  async function sendReply() {
+    if (!reply.trim() || !activeSession) return;
+    const msg = reply.trim();
+    setReply("");
+    await supabase.from("support_messages").insert({ id: "m" + Date.now(), session_id: activeSession, sender: "admin", message: msg });
+    addToast("تم إرسال الرد ✓");
+  }
+
+  return (
+    <div className="grid md:grid-cols-[240px_1fr] gap-4">
+      <div className="c-surface border c-border-line rounded-xl overflow-hidden max-h-[480px] overflow-y-auto">
+        {loading && <p className="p-4 c-text-dim2 text-xs">جاري التحميل...</p>}
+        {!loading && sessions.length === 0 && <p className="p-4 c-text-dim2 text-xs">لا توجد محادثات بعد.</p>}
+        {sessions.map(s => (
+          <button key={s.session_id} onClick={() => setActiveSession(s.session_id)} className={`w-full text-right px-3 py-3 border-b c-border-line text-xs ${activeSession === s.session_id ? "c-fill" : ""}`}>
+            <div className="font-bold mb-0.5">زائر {s.session_id.slice(-5)}</div>
+            <div className="c-text-dim2 truncate">{s.last.message}</div>
+          </button>
+        ))}
+      </div>
+      <div className="c-surface border c-border-line rounded-xl flex flex-col" style={{ height: 480 }}>
+        {!activeSession ? (
+          <div className="flex-1 flex items-center justify-center c-text-dim2 text-sm">اختر محادثة من القائمة</div>
+        ) : (
+          <>
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
+              {messages.map(m => (
+                <div key={m.id} className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-6 ${m.sender === "admin" ? "c-bg-text c-text-bg self-end" : "c-fill self-start"}`}>
+                  {m.message}
+                </div>
+              ))}
+            </div>
+            <div className="p-3 border-t c-border-line flex gap-2">
+              <input value={reply} onChange={e => setReply(e.target.value)} onKeyDown={e => e.key === "Enter" && sendReply()} placeholder="اكتب ردك..." className="flex-1 c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm outline-none" />
+              <button onClick={sendReply} className="c-bg-text c-text-bg rounded-lg px-3"><Send size={16} /></button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail, settings, refreshSettings }) {
   const [tab, setTab] = useState("products");
   const [editing, setEditing] = useState(null);
   const emptyForm = { name: "", category: "starter", map: "غير موثق", price: "", oldPrice: "", stock: "", emoji: "🥔", image: "", description: "", delivery: "" };
@@ -899,6 +985,21 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+
+  const [linksForm, setLinksForm] = useState({ discord_url: "", whatsapp_url: "", instagram_url: "", tiktok_url: "" });
+  const [savingLinks, setSavingLinks] = useState(false);
+  useEffect(() => { if (settings) setLinksForm(l => ({ ...l, ...settings })); }, [settings]);
+
+  async function saveLinks() {
+    setSavingLinks(true);
+    const entries = Object.entries(linksForm);
+    for (const [key, value] of entries) {
+      await supabase.from("site_settings").upsert({ key, value: value || "" });
+    }
+    await refreshSettings?.();
+    setSavingLinks(false);
+    addToast("تم حفظ روابط التواصل ✓");
+  }
 
   async function loadOrders() {
     setOrdersLoading(true);
@@ -1000,7 +1101,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
       <p className="text-xs c-text-dim2 mb-6">مسجّل دخول كـ {userEmail} — البيانات هنا حقيقية ومتصلة بقاعدة بيانات Supabase، تظهر لكل زوار الموقع.</p>
 
       <div className="flex gap-2 mb-6 flex-wrap">
-        {[["products", "المنتجات"], ["categories", "الأقسام"], ["orders", "الطلبات"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
+        {[["products", "المنتجات"], ["categories", "الأقسام"], ["orders", "الطلبات"], ["support", "الدعم الفني"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab === id ? "c-bg-text c-text-bg" : "c-fill c-text-dim"}`}>{label}</button>
         ))}
       </div>
@@ -1115,6 +1216,8 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
         </div>
       )}
 
+      {tab === "support" && <SupportInbox addToast={addToast} />}
+
       {tab === "stats" && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="c-surface border c-border-line rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">إجمالي الطلبات</div><div className="font-extrabold text-2xl c-text">{stats.count}</div></div>
@@ -1124,7 +1227,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
       )}
 
       {tab === "settings" && (
-        <div className="max-w-sm">
+        <div className="max-w-sm flex flex-col gap-5">
           <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-3">
             <h3 className="font-extrabold text-sm">تغيير كلمة مرور الأدمن</h3>
             <div>
@@ -1142,14 +1245,117 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
               هذا يغيّر كلمة المرور فعليًا عبر نظام تسجيل الدخول الآمن (Supabase Auth). تغيير البريد الإلكتروني نفسه يحتاج تأكيد عبر بريد إلكتروني جديد، تقدر تسويه من لوحة Supabase مباشرة إذا احتجت.
             </p>
           </div>
+
+          <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-3">
+            <h3 className="font-extrabold text-sm">روابط التواصل الاجتماعي</h3>
+            <p className="c-fs-10-5 c-text-dim3 leading-5">تتحدث في كل الموقع فورًا بمجرد الحفظ (بدون الحاجة لتعديل الكود أو إعادة النشر).</p>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">رابط سيرفر Discord</label>
+              <input value={linksForm.discord_url} onChange={e => setLinksForm(f => ({ ...f, discord_url: e.target.value }))} placeholder="https://discord.gg/xxxxx" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" dir="ltr" />
+            </div>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">رابط واتساب</label>
+              <input value={linksForm.whatsapp_url} onChange={e => setLinksForm(f => ({ ...f, whatsapp_url: e.target.value }))} placeholder="https://wa.me/9665xxxxxxxx" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" dir="ltr" />
+            </div>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">رابط Instagram</label>
+              <input value={linksForm.instagram_url} onChange={e => setLinksForm(f => ({ ...f, instagram_url: e.target.value }))} placeholder="https://instagram.com/xxxxx" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" dir="ltr" />
+            </div>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">رابط TikTok</label>
+              <input value={linksForm.tiktok_url} onChange={e => setLinksForm(f => ({ ...f, tiktok_url: e.target.value }))} placeholder="https://tiktok.com/@xxxxx" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" dir="ltr" />
+            </div>
+            <button onClick={saveLinks} disabled={savingLinks} className="py-2.5 rounded-lg c-bg-text c-text-bg font-extrabold text-sm disabled:opacity-50">
+              {savingLinks ? "جاري الحفظ..." : "حفظ الروابط"}
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+/* ============================= Chat Widget (دعم فني مباشر) ============================= */
+function getChatSessionId() {
+  try {
+    let id = window.localStorage.getItem("batata:chat_session");
+    if (!id) {
+      id = "s" + Date.now() + Math.random().toString(36).slice(2, 8);
+      window.localStorage.setItem("batata:chat_session", id);
+    }
+    return id;
+  } catch { return "guest"; }
+}
+
+function ChatWidget() {
+  const [open, setOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [unread, setUnread] = useState(0);
+  const scrollRef = useRef(null);
+
+  useEffect(() => { setSessionId(getChatSessionId()); }, []);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    (async () => {
+      const { data } = await supabase.from("support_messages").select("*").eq("session_id", sessionId).order("created_at", { ascending: true });
+      if (data) setMessages(data);
+    })();
+    const channel = supabase.channel("chat-" + sessionId)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `session_id=eq.${sessionId}` }, (payload) => {
+        setMessages(prev => [...prev, payload.new]);
+        if (payload.new.sender === "admin" && !open) setUnread(u => u + 1);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [sessionId, open]);
+
+  useEffect(() => { if (open) setUnread(0); }, [open]);
+  useEffect(() => { scrollRef.current?.scrollTo?.(0, scrollRef.current.scrollHeight); }, [messages, open]);
+
+  async function send() {
+    if (!text.trim() || !sessionId) return;
+    const msg = text.trim();
+    setText("");
+    await supabase.from("support_messages").insert({ id: "m" + Date.now(), session_id: sessionId, sender: "user", message: msg });
+  }
+
+  return (
+    <div className="fixed bottom-5 left-5 z-50" style={{ direction: "rtl" }}>
+      {open && (
+        <div className="c-surface border c-border-line-strong rounded-2xl shadow-2xl w-[calc(100vw-2.5rem)] max-w-[320px] flex flex-col mb-3 overflow-hidden" style={{ height: 420 }}>
+          <div className="c-bg-text c-text-bg px-4 py-3 flex items-center justify-between">
+            <span className="font-extrabold text-sm">💬 الدعم الفني</span>
+            <button onClick={() => setOpen(false)}><X size={18} /></button>
+          </div>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2">
+            {messages.length === 0 && (
+              <p className="c-text-dim3 text-xs text-center mt-6">اكتب رسالتك وفريق الدعم بيرد عليك بأقرب وقت 👋</p>
+            )}
+            {messages.map(m => (
+              <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-6 ${m.sender === "admin" ? "c-fill self-start" : "c-bg-text c-text-bg self-end"}`}>
+                {m.message}
+              </div>
+            ))}
+          </div>
+          <div className="p-2.5 border-t c-border-line flex gap-2">
+            <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="اكتب رسالتك..." className="flex-1 c-bg border c-border-line-strong rounded-lg px-3 py-2 text-xs outline-none" />
+            <button onClick={send} className="c-bg-text c-text-bg rounded-lg px-3"><Send size={16} /></button>
+          </div>
+        </div>
+      )}
+      <button onClick={() => setOpen(o => !o)} className="relative c-bg-text c-text-bg rounded-full w-14 h-14 flex items-center justify-center shadow-2xl">
+        <MessageCircle size={24} />
+        {unread > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center">{unread}</span>}
+      </button>
+    </div>
+  );
+}
+
 /* ============================= Footer ============================= */
-function Footer({ go }) {
+function Footer({ go, settings }) {
   return (
     <footer className="border-t c-border-line mt-10">
       <div className="max-w-6xl mx-auto px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
@@ -1177,9 +1383,9 @@ function Footer({ go }) {
         <div>
           <div className="font-bold mb-3 text-xs c-text-dim2">تابعنا</div>
           <div className="flex gap-2">
-            <a href="#" className="p-2 rounded-lg c-fill"><MessageCircle size={15}/></a>
-            <a href="#" className="p-2 rounded-lg c-fill"><Instagram size={15}/></a>
-            <a href="#" className="p-2 rounded-lg c-fill"><TrendingUp size={15}/></a>
+            <a href={settings?.discord_url || "#"} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><MessageCircle size={15}/></a>
+            <a href={settings?.instagram_url || "#"} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><Instagram size={15}/></a>
+            <a href={settings?.tiktok_url || "#"} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><TrendingUp size={15}/></a>
           </div>
         </div>
       </div>
@@ -1197,6 +1403,7 @@ export default function BatataStore() {
   const [products, setProducts] = useState(SEED_PRODUCTS);
   const [categories, setCategories] = useState(SEED_CATEGORIES);
   const [reviews, setReviews] = useState([]);
+  const [settings, setSettings] = useState({});
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]); // orders placed THIS session (guest-friendly, no account needed)
   const [user, setUser] = useState(null);
@@ -1231,6 +1438,14 @@ export default function BatataStore() {
     const { data } = await supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(9);
     if (data) setReviews(data);
   }
+  async function refreshSettings() {
+    const { data } = await supabase.from("site_settings").select("*");
+    if (data) {
+      const obj = {};
+      data.forEach(row => { obj[row.key] = row.value; });
+      setSettings(obj);
+    }
+  }
 
   // load persisted data + supabase session
   useEffect(() => {
@@ -1240,7 +1455,7 @@ export default function BatataStore() {
         if (storedTheme === "light" || storedTheme === "dark") setTheme(storedTheme);
       } catch {}
 
-      await Promise.all([refreshProducts(), refreshCategories(), refreshReviews()]);
+      await Promise.all([refreshProducts(), refreshCategories(), refreshReviews(), refreshSettings()]);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -1389,16 +1604,17 @@ export default function BatataStore() {
         {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} />}
         {page === "login" && <LoginPage login={login} go={go} />}
         {page === "faq" && <FaqPage />}
-        {page === "contact" && <ContactPage go={go} />}
+        {page === "contact" && <ContactPage go={go} settings={settings} />}
         {page === "terms" && <TermsPage />}
         {page === "privacy" && <PrivacyPage />}
         {page === "refund" && <RefundPage />}
         {page === "admin" && (user?.isAdmin
-          ? <AdminPage products={products} categories={categories} refreshProducts={refreshProducts} refreshCategories={refreshCategories} addToast={addToast} logout={logout} userEmail={user.name} />
+          ? <AdminPage products={products} categories={categories} refreshProducts={refreshProducts} refreshCategories={refreshCategories} addToast={addToast} logout={logout} userEmail={user.name} settings={settings} refreshSettings={refreshSettings} />
           : <div className="max-w-md mx-auto px-4 py-24 text-center c-text-dim2">هذه الصفحة خاصة بالأدمن فقط.</div>)}
       </main>
 
-      <Footer go={go} />
+      <ChatWidget />
+      <Footer go={go} settings={settings} />
     </div>
   );
 }
