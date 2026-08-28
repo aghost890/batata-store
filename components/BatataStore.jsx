@@ -36,42 +36,40 @@ const THEMES = {
 ============================================================================ */
 
 const SEED_CATEGORIES = [
-  { id: "accounts", label: "حسابات Roblox", sub: "Roblox Accounts", emoji: "🥔" },
-  { id: "bloxfruits", label: "بلوكس فروت", sub: "Blox Fruits", emoji: "🍎" },
-  { id: "pets", label: "الحيوانات الأليفة", sub: "Adopt Me Pets", emoji: "🐾" },
-  { id: "items", label: "أغراض المابات", sub: "Game Items", emoji: "🎮" },
-  { id: "rare", label: "العناصر النادرة", sub: "Rare Items", emoji: "💎" },
+  { id: "starter", label: "حسابات مبتدئين", sub: "Starter Accounts", emoji: "🥔" },
+  { id: "premium", label: "حسابات مميزة", sub: "Premium Accounts", emoji: "⭐" },
+  { id: "vip", label: "حسابات VIP", sub: "VIP Accounts", emoji: "👑" },
+  { id: "elite", label: "حسابات النخبة", sub: "Elite Accounts", emoji: "🏆" },
   { id: "offers", label: "العروض", sub: "Hot Deals", emoji: "🔥" },
-  { id: "services", label: "خدمات Roblox", sub: "Roblox Services", emoji: "🛒" },
 ];
 
-const MAPS = ["الكل", "Blox Fruits", "Adopt Me", "Steal a Brainrot", "99 Nights", "عام"];
+const MAPS = ["الكل", "موثق بالبريد", "موثق بالهاتف", "موثق بالكامل", "غير موثق"];
 
 const SEED_PRODUCTS = [
-  { id: "p1", name: "حساب Roblox VIP + عناصر نادرة", category: "accounts", map: "عام", price: 65, oldPrice: 90, stock: 4, rating: 4.8, reviews: 132, emoji: "🥔", featured: true,
-    description: "حساب مستوى عالي مع Robux وعناصر متنوعة من عدة مابات، تسليم فوري بعد الدفع.", delivery: "خلال 10 دقائق" },
-  { id: "p2", name: "فاكهة Dragon (فيزيقية)", category: "bloxfruits", map: "Blox Fruits", price: 22, oldPrice: null, stock: 12, rating: 4.9, reviews: 340, emoji: "🐉", featured: true,
-    description: "فاكهة Dragon Physical أساطيرية، تسليم مباشر داخل اللعبة.", delivery: "خلال 15 دقيقة" },
-  { id: "p3", name: "فاكهة Leopard (فيزيقية)", category: "bloxfruits", map: "Blox Fruits", price: 18, oldPrice: 25, stock: 9, rating: 4.7, reviews: 210, emoji: "🐆", featured: false,
-    description: "فاكهة Leopard قوية وسريعة، ممتازة للـ PvP.", delivery: "خلال 15 دقيقة" },
-  { id: "p4", name: "Pet كلب أسطوري نادر", category: "pets", map: "Adopt Me", price: 12, oldPrice: null, stock: 20, rating: 4.6, reviews: 98, emoji: "🐶", featured: true,
-    description: "حيوان أليف أسطوري (Legendary) نادر من Adopt Me.", delivery: "خلال 20 دقيقة" },
-  { id: "p5", name: "Brainrot نادر جداً", category: "items", map: "Steal a Brainrot", price: 30, oldPrice: 40, stock: 6, rating: 4.5, reviews: 74, emoji: "🧠", featured: false,
-    description: "عنصر Brainrot نادر بقيمة عالية داخل السوق.", delivery: "خلال 30 دقيقة" },
-  { id: "p6", name: "مجموعة عناصر 99 Nights النادرة", category: "rare", map: "99 Nights", price: 45, oldPrice: 60, stock: 3, rating: 4.9, reviews: 51, emoji: "💎", featured: true,
-    description: "باقة عناصر نادرة تساعدك تتصدر السيرفر بسرعة.", delivery: "خلال 30 دقيقة" },
-  { id: "p7", name: "شحن 1000 Robux", category: "services", map: "عام", price: 40, oldPrice: null, stock: 50, rating: 4.8, reviews: 500, emoji: "💰", featured: false,
-    description: "شحن Robux مباشر وآمن لحسابك.", delivery: "خلال 5 دقائق" },
-  { id: "p8", name: "حساب مبتدئ + عملات", category: "accounts", map: "عام", price: 15, oldPrice: 20, stock: 15, rating: 4.3, reviews: 40, emoji: "🥔", featured: false,
-    description: "حساب مناسب للبداية مع رصيد عملات جيد.", delivery: "خلال 10 دقائق" },
-  { id: "p9", name: "فاكهة Kitsune", category: "bloxfruits", map: "Blox Fruits", price: 35, oldPrice: null, stock: 5, rating: 5.0, reviews: 180, emoji: "🦊", featured: true,
-    description: "من أقوى الفواكه الأسطورية في اللعبة.", delivery: "خلال 15 دقيقة" },
-  { id: "p10", name: "Pet قطة ميغا نيون", category: "pets", map: "Adopt Me", price: 25, oldPrice: 32, stock: 7, rating: 4.7, reviews: 120, emoji: "🐱", featured: false,
-    description: "قطة Mega Neon نادرة جداً وعالية القيمة.", delivery: "خلال 20 دقيقة" },
-  { id: "p11", name: "خدمة رفع مستوى سريع", category: "services", map: "عام", price: 20, oldPrice: null, stock: 30, rating: 4.4, reviews: 65, emoji: "🛒", featured: false,
-    description: "نرفع مستوى حسابك بسرعة وأمان.", delivery: "خلال ساعة" },
-  { id: "p12", name: "عنصر نادر Golden Chest", category: "rare", map: "عام", price: 55, oldPrice: 70, stock: 2, rating: 4.9, reviews: 33, emoji: "🎁", featured: false,
-    description: "صندوق ذهبي نادر يحتوي عناصر مميزة.", delivery: "خلال 20 دقيقة" },
+  { id: "p1", name: "حساب النخبة الأسطوري", category: "elite", map: "موثق بالكامل", price: 65, oldPrice: 90, stock: 4, rating: 4.8, reviews: 132, emoji: "🔱", featured: true,
+    description: "أعلى مستوياتنا من حيث المواصفات والتوثيق الكامل، تسليم فوري بعد الدفع.", delivery: "خلال 10 دقائق" },
+  { id: "p2", name: "حساب مميز Premium", category: "premium", map: "موثق بالبريد", price: 22, oldPrice: null, stock: 12, rating: 4.9, reviews: 340, emoji: "⭐", featured: true,
+    description: "حساب بمستوى متوسط إلى عالي ومواصفات مرتبة، تسليم مباشر وآمن.", delivery: "خلال 15 دقيقة" },
+  { id: "p3", name: "حساب مبتدئ بلس", category: "starter", map: "موثق بالبريد", price: 18, oldPrice: 25, stock: 9, rating: 4.7, reviews: 210, emoji: "🌱", featured: false,
+    description: "حساب مبتدئ بمزايا إضافية ومظهر مرتب، تسليم مباشر بعد إتمام الطلب.", delivery: "خلال 15 دقيقة" },
+  { id: "p4", name: "حساب مبتدئ اقتصادي", category: "starter", map: "غير موثق", price: 12, oldPrice: null, stock: 20, rating: 4.6, reviews: 98, emoji: "🌟", featured: true,
+    description: "أرخص خيار عندنا للبداية، جودة جيدة وسعر مناسب للجميع.", delivery: "خلال 20 دقيقة" },
+  { id: "p5", name: "حساب مميز نادر التوفر", category: "premium", map: "موثق بالهاتف", price: 30, oldPrice: 40, stock: 6, rating: 4.5, reviews: 74, emoji: "✨", featured: false,
+    description: "حساب مميز بكمية محدودة، مناسب لمن يبحث عن شيء مختلف.", delivery: "خلال 30 دقيقة" },
+  { id: "p6", name: "باقة VIP مميزة", category: "vip", map: "موثق بالبريد", price: 45, oldPrice: 60, stock: 3, rating: 4.9, reviews: 51, emoji: "💎", featured: true,
+    description: "باقة VIP تجمع مواصفات ممتازة بسعر تنافسي.", delivery: "خلال 30 دقيقة" },
+  { id: "p7", name: "حساب VIP متكامل", category: "vip", map: "موثق بالهاتف", price: 40, oldPrice: null, stock: 50, rating: 4.8, reviews: 500, emoji: "👑", featured: false,
+    description: "حساب VIP بتوثيق كامل ومظهر احترافي، الأكثر طلبًا لدينا.", delivery: "خلال 5 دقائق" },
+  { id: "p8", name: "حساب مبتدئ أساسي", category: "starter", map: "غير موثق", price: 15, oldPrice: 20, stock: 15, rating: 4.3, reviews: 40, emoji: "🥔", featured: false,
+    description: "حساب بسيط ومناسب لأول تجربة لك، تسليم سريع وآمن بعد الدفع مباشرة.", delivery: "خلال 10 دقائق" },
+  { id: "p9", name: "حساب VIP نادر", category: "vip", map: "موثق بالبريد", price: 35, oldPrice: null, stock: 5, rating: 5.0, reviews: 180, emoji: "🔷", featured: true,
+    description: "من أفضل حسابات VIP المتوفرة حاليًا، كمية محدودة جدًا.", delivery: "خلال 15 دقيقة" },
+  { id: "p10", name: "باقة حسابات مميزة", category: "premium", map: "موثق بالبريد", price: 25, oldPrice: 32, stock: 7, rating: 4.7, reviews: 120, emoji: "📦", featured: false,
+    description: "باقة تجمع أكثر من حساب مميز بسعر أفضل من الشراء المنفرد.", delivery: "خلال 20 دقيقة" },
+  { id: "p11", name: "حساب النخبة الأساسي", category: "elite", map: "موثق بالبريد", price: 20, oldPrice: null, stock: 30, rating: 4.4, reviews: 65, emoji: "🏆", featured: false,
+    description: "حساب من فئة النخبة بمواصفات متكاملة ومظهر مميز.", delivery: "خلال ساعة" },
+  { id: "p12", name: "حساب النخبة الذهبي", category: "elite", map: "موثق بالهاتف", price: 55, oldPrice: 70, stock: 2, rating: 4.9, reviews: 33, emoji: "🥇", featured: false,
+    description: "حساب ذهبي من فئة النخبة، الكمية محدودة جدًا فلا تتأخر.", delivery: "خلال 20 دقيقة" },
 ];
 
 const STATUS_STYLES = {
@@ -316,11 +314,11 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
       <section className="relative overflow-hidden border-b c-border-line">
         <div className="absolute inset-0 c-opacity-08" style={{ backgroundImage: "linear-gradient(var(--text) 1px, transparent 1px), linear-gradient(90deg, var(--text) 1px, transparent 1px)", backgroundSize: "34px 34px" }} />
         <div className="max-w-6xl mx-auto px-4 py-16 md:py-24 relative text-center flex flex-col items-center">
-          <Badge className="c-soft-bg c-text-dim c-border-soft mb-5">متجر مستقل غير تابع لـ Roblox</Badge>
+          <Badge className="c-soft-bg c-text-dim c-border-soft mb-5">وجهتك الموثوقة لحسابات جاهزة</Badge>
           <h1 className="font-extrabold text-3xl md:text-5xl leading-tight max-w-3xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
-            كل أغراض <span className="c-text">Roblox</span> اللي تدور عليها... في مكان واحد 🥔🎮
+            كل الحسابات اللي تدور عليها... في مكان واحد 🥔✨
           </h1>
-          <p className="c-text-dim mt-5 max-w-xl leading-8">حسابات، فواكه، Pets، أغراض نادرة وخدمات لمابات Roblox المفضلة عندك.</p>
+          <p className="c-text-dim mt-5 max-w-xl leading-8">حسابات مبتدئين، مميزة، VIP ونخبة — بتوثيق واضح وتسليم فوري بعد الدفع.</p>
           <div className="flex flex-wrap gap-3 justify-center mt-8">
             <button onClick={() => go("shop")} className="px-6 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold hover:brightness-110 transition">تصفح المتجر</button>
             <button onClick={() => go("shop", { offersOnly: true })} className="px-6 py-3.5 rounded-xl c-fill hover:c-fill-strong font-extrabold transition">شاهد العروض 🔥</button>
@@ -455,7 +453,7 @@ function ShopPage({ products, categories, go, addToCart, initialFilters }) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8 c-surface border c-border-line rounded-xl p-4">
         <div>
-          <label className="c-fs-11 font-bold c-text-dim2 block mb-1.5">الماب</label>
+          <label className="c-fs-11 font-bold c-text-dim2 block mb-1.5">حالة التوثيق</label>
           <select value={map} onChange={e => setMap(e.target.value)} className="w-full c-bg border c-border-line-strong rounded-lg px-2.5 py-2 text-xs">
             {MAPS.map(m => <option key={m}>{m}</option>)}
           </select>
@@ -514,7 +512,7 @@ function ProductPage({ products, id, go, addToCart }) {
           <div className="c-surface border c-border-line rounded-xl p-3 flex items-center gap-1.5"><Clock size={14} className="c-text-dim"/><span className="font-bold">{p.delivery}</span></div>
         </div>
         <div className="c-surface border c-border-line rounded-xl p-3 mt-3 text-xs c-text-dim leading-6">
-          ⚠️ معلومة مهمة: تأكد من صحة بياناتك قبل الشراء. التسليم يتم داخل اللعبة حسب الطريقة المحددة لكل منتج.
+          ⚠️ معلومة مهمة: تأكد من صحة بريدك الإلكتروني قبل الشراء. التسليم يتم عبر البريد الإلكتروني فور الدفع.
         </div>
 
         <div className="flex items-center gap-3 mt-6">
@@ -581,15 +579,12 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const subtotal = items.reduce((s, i) => s + i.product.price * i.qty, 0);
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(null);
-  const [gameId, setGameId] = useState("");
   const [email, setEmail] = useState("");
   const discountAmount = applied ? Math.round(subtotal * applied.pct) : 0;
   const total = Math.max(0, subtotal - discountAmount);
 
-  const hasAccountItem = items.some(i => i.product.category === "accounts");
-  const hasNonAccountItem = items.some(i => i.product.category !== "accounts");
   const emailValid = /\S+@\S+\.\S+/.test(email);
-  const canSubmit = (!hasAccountItem || emailValid) && (!hasNonAccountItem || gameId.trim());
+  const canSubmit = emailValid;
 
   if (items.length === 0) return <div className="max-w-3xl mx-auto px-4 py-24 text-center c-text-dim2">لا يوجد منتجات في السلة</div>;
 
@@ -602,20 +597,11 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
     <div className="max-w-2xl mx-auto px-4 py-10">
       <h1 className="font-extrabold text-2xl mb-6" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>إتمام الطلب</h1>
 
-      {hasAccountItem && (
-        <div className="c-surface border c-border-line rounded-xl p-4 mb-4">
-          <label className="text-xs font-bold c-text-dim2 block mb-2">بريدك الإلكتروني (لاستلام بيانات الحساب)</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
-          <p className="c-fs-10-5 c-text-dim3 mt-1.5">طلبك فيه حساب — بنرسل لك اسم المستخدم وكلمة المرور على هذا الإيميل بعد الدفع.</p>
-        </div>
-      )}
-
-      {hasNonAccountItem && (
-        <div className="c-surface border c-border-line rounded-xl p-4 mb-4">
-          <label className="text-xs font-bold c-text-dim2 block mb-2">معرّف حسابك في اللعبة (Username / User ID)</label>
-          <input value={gameId} onChange={e => setGameId(e.target.value)} placeholder="مثال: Player123" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
-        </div>
-      )}
+      <div className="c-surface border c-border-line rounded-xl p-4 mb-4">
+        <label className="text-xs font-bold c-text-dim2 block mb-2">بريدك الإلكتروني (لاستلام بيانات الحساب)</label>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
+        <p className="c-fs-10-5 c-text-dim3 mt-1.5">بنرسل لك اسم المستخدم وكلمة المرور على هذا الإيميل بعد الدفع.</p>
+      </div>
 
       <div className="flex flex-col gap-2 mb-4">
         {items.map(i => (
@@ -643,7 +629,7 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
       </div>
 
       <button
-        onClick={() => { if (!canSubmit) return; placeOrder(items, total, gameId.trim() || null, email.trim() || null); }}
+        onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null); }}
         disabled={!canSubmit}
         className="w-full mt-5 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
         تأكيد الطلب والدفع
@@ -766,7 +752,7 @@ function LoginPage({ login, go }) {
 /* ============================= FAQ / Contact ============================= */
 function FaqPage() {
   const faqs = [
-    { q: "هل متجر بطاطا تابع رسمياً لـ Roblox؟", a: "لا، متجر بطاطا متجر مستقل غير تابع لشركة Roblox بأي شكل." },
+    { q: "هل متجر بطاطا شركة رسمية أو موزّع معتمد؟", a: "لا، متجر بطاطا منصة مستقلة لبيع حسابات جاهزة، غير تابعة لأي جهة خارجية." },
     { q: "كم مدة التسليم؟", a: "تختلف حسب المنتج، غالباً بين 5 إلى 30 دقيقة، موضحة في صفحة كل منتج." },
     { q: "هل فيه ضمان استرجاع؟", a: "نعم، حسب سياسة الاسترجاع الموضحة في الفوتر." },
     { q: "كيف أتواصل مع الدعم؟", a: "عبر صفحة تواصل معنا أو قنوات التواصل الاجتماعي بالفوتر." },
@@ -820,9 +806,9 @@ function TermsPage() {
   return (
     <LegalPage title="شروط الاستخدام">
       <p>مرحبًا بك في متجر بطاطا. باستخدامك لهذا الموقع فإنك توافق على الشروط التالية:</p>
-      <p><b className="c-text">1. طبيعة المتجر:</b> متجر بطاطا متجر مستقل غير تابع رسميًا لشركة Roblox Corporation أو أي شركة ألعاب أخرى. جميع الأسماء والعلامات التجارية المذكورة ملك لأصحابها وتُستخدم للتعريف فقط.</p>
-      <p><b className="c-text">2. المنتجات:</b> نبيع عناصر وحسابات وخدمات رقمية داخل الألعاب. التسليم يتم إلكترونيًا حسب الطريقة الموضحة بكل منتج.</p>
-      <p><b className="c-text">3. مسؤولية المستخدم:</b> يجب أن تكون بياناتك (معرف اللعبة أو البريد الإلكتروني) صحيحة عند الطلب، ونحن غير مسؤولين عن أي خطأ ناتج عن بيانات غير صحيحة أدخلها المستخدم.</p>
+      <p><b className="c-text">1. طبيعة المتجر:</b> متجر بطاطا منصة مستقلة لبيع حسابات جاهزة، وغير تابع لأي جهة أو شركة خارجية.</p>
+      <p><b className="c-text">2. المنتجات:</b> نبيع حسابات جاهزة فقط. التسليم يتم إلكترونيًا عبر البريد الإلكتروني بعد إتمام الدفع.</p>
+      <p><b className="c-text">3. مسؤولية المستخدم:</b> يجب أن تكون بياناتك (بريدك الإلكتروني) صحيحة عند الطلب، ونحن غير مسؤولين عن أي خطأ ناتج عن بيانات غير صحيحة أدخلها المستخدم.</p>
       <p><b className="c-text">4. الأسعار:</b> جميع الأسعار معروضة بالريال السعودي وقابلة للتغيير دون إشعار مسبق.</p>
       <p><b className="c-text">5. الاستخدام المقبول:</b> يُمنع استخدام الموقع لأي غرض غير قانوني أو محاولة الإضرار به.</p>
       <p>لأي استفسار حول هذه الشروط، تواصل معنا عبر صفحة "تواصل معنا".</p>
@@ -834,7 +820,7 @@ function PrivacyPage() {
   return (
     <LegalPage title="سياسة الخصوصية">
       <p>نحترم خصوصيتك ونلتزم بحماية بياناتك الشخصية.</p>
-      <p><b className="c-text">البيانات التي نجمعها:</b> معرف حسابك باللعبة و/أو بريدك الإلكتروني عند إتمام طلب، فقط لغرض تسليم المنتج والتواصل معك بخصوص طلبك.</p>
+      <p><b className="c-text">البيانات التي نجمعها:</b> بريدك الإلكتروني عند إتمام طلب، فقط لغرض تسليم بيانات الحساب والتواصل معك بخصوص طلبك.</p>
       <p><b className="c-text">كيف نستخدم بياناتك:</b> نستخدمها فقط لتنفيذ طلبك وإرسال بيانات المنتج (مثل بيانات حساب) وتقديم الدعم الفني.</p>
       <p><b className="c-text">مشاركة البيانات:</b> لا نبيع أو نشارك بياناتك مع أي طرف ثالث لأغراض تسويقية. قد نشارك بيانات الدفع الضرورية فقط مع بوابة الدفع المستخدمة لإتمام العملية.</p>
       <p><b className="c-text">حماية البيانات:</b> بياناتك مخزّنة على خوادم آمنة (Supabase) مع سياسات وصول محدودة.</p>
@@ -847,7 +833,7 @@ function RefundPage() {
   return (
     <LegalPage title="سياسة الاسترجاع">
       <p>نظرًا لطبيعة المنتجات الرقمية، تُطبّق سياسة الاسترجاع التالية:</p>
-      <p><b className="c-text">1. المنتجات الرقمية المُسلَّمة:</b> بما أن المنتجات (عناصر، حسابات، شحن داخل اللعبة) تُسلَّم فور الدفع، لا يمكن استرجاعها بعد التسليم الناجح إلا في حالات الخطأ من طرفنا.</p>
+      <p><b className="c-text">1. الحسابات المُسلَّمة:</b> بما أن الحسابات تُسلَّم إلكترونيًا فور الدفع، لا يمكن استرجاعها بعد التسليم الناجح إلا في حالات الخطأ من طرفنا.</p>
       <p><b className="c-text">2. حالات الاسترجاع المقبولة:</b>
         <br />- عدم تسليم المنتج خلال المدة المعلنة
         <br />- تسليم منتج مختلف عمّا تم طلبه
@@ -900,7 +886,7 @@ function SendAccountEmailForm({ order, addToast }) {
 function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail }) {
   const [tab, setTab] = useState("products");
   const [editing, setEditing] = useState(null);
-  const emptyForm = { name: "", category: "accounts", map: "عام", price: "", oldPrice: "", stock: "", emoji: "🥔", image: "", description: "", delivery: "" };
+  const emptyForm = { name: "", category: "starter", map: "غير موثق", price: "", oldPrice: "", stock: "", emoji: "🥔", image: "", description: "", delivery: "" };
   const [form, setForm] = useState(emptyForm);
 
   const [editingCat, setEditingCat] = useState(null);
@@ -1169,7 +1155,7 @@ function Footer({ go }) {
       <div className="max-w-6xl mx-auto px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2 mb-3"><span className="font-extrabold" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>متجر بطاطا</span></div>
-          <p className="text-xs c-text-dim2 leading-6">وجهتك لكل أغراض Roblox — حسابات، فواكه، Pets وأكثر.</p>
+          <p className="text-xs c-text-dim2 leading-6">وجهتك لكل الحسابات الجاهزة — مبتدئين، مميزة، VIP ونخبة.</p>
         </div>
         <div>
           <div className="font-bold mb-3 text-xs c-text-dim2">روابط الموقع</div>
@@ -1198,7 +1184,7 @@ function Footer({ go }) {
         </div>
       </div>
       <div className="max-w-6xl mx-auto px-4 pb-8 c-fs-11 c-text-dim3 leading-6 border-t c-border-line pt-5">
-        ⚠️ متجر بطاطا متجر مستقل غير تابع رسمياً لشركة Roblox Corporation. جميع أسماء المابات والألعاب المذكورة ملك لأصحابها وتُستخدم للتعريف فقط.
+        ⚠️ متجر بطاطا منصة مستقلة لبيع حسابات جاهزة، وغير تابعة لأي جهة أو شركة خارجية.
       </div>
     </footer>
   );
