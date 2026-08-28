@@ -190,7 +190,7 @@ function StarRating({ rating, reviews }) {
 }
 
 /* ============================= Header ============================= */
-function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme }) {
+function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onOpenAuth }) {
   const NAV = [
     { id: "home", label: "الرئيسية" },
     { id: "shop", label: "المتجر" },
@@ -231,10 +231,14 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme }) {
               </span>
             )}
           </button>
-          <button onClick={() => go(user ? (user.isAdmin ? "admin" : "orders") : "login")}
+          <button onClick={() => user ? go(user.isAdmin ? "admin" : "orders") : onOpenAuth()}
             className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl c-bg-text c-text-bg font-extrabold text-sm hover:brightness-110 transition">
             {user ? (user.isAdmin ? <Settings size={16} /> : <Package size={16} />) : <LogIn size={16} />}
             {user ? (user.isAdmin ? "لوحة التحكم" : user.name) : "تسجيل الدخول"}
+          </button>
+          <button onClick={() => user ? go(user.isAdmin ? "admin" : "orders") : onOpenAuth()}
+            aria-label="الحساب" className="sm:hidden p-2.5 rounded-xl c-bg-text c-text-bg">
+            {user ? (user.isAdmin ? <Settings size={18} /> : <Package size={18} />) : <LogIn size={18} />}
           </button>
           <button className="md:hidden p-2.5 rounded-xl c-fill" onClick={onOpenMenu}><Menu size={19} /></button>
         </div>
@@ -243,7 +247,7 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme }) {
   );
 }
 
-function MobileMenu({ open, close, go, user }) {
+function MobileMenu({ open, close, go, user, onOpenAuth }) {
   if (!open) return null;
   const NAV = [
     { id: "home", label: "الرئيسية", icon: HomeIcon },
@@ -251,7 +255,7 @@ function MobileMenu({ open, close, go, user }) {
     { id: "orders", label: "الطلبات", icon: Package },
     { id: "faq", label: "الأسئلة الشائعة", icon: HelpCircle },
     { id: "contact", label: "تواصل معنا", icon: Phone },
-    { id: user ? (user.isAdmin ? "admin" : "orders") : "login", label: user ? (user.isAdmin ? "لوحة التحكم" : "حسابي") : "تسجيل الدخول", icon: LogIn },
+    { id: user ? (user.isAdmin ? "admin" : "orders") : null, label: user ? (user.isAdmin ? "لوحة التحكم" : "حسابي") : "تسجيل الدخول", icon: LogIn },
   ];
   return (
     <div className="fixed inset-0 z-50 c-bg90 backdrop-blur-lg flex flex-col p-6 md:hidden">
@@ -261,7 +265,7 @@ function MobileMenu({ open, close, go, user }) {
       </div>
       <div className="flex flex-col gap-2">
         {NAV.map(n => (
-          <button key={n.id} onClick={() => { go(n.id); close(); }}
+          <button key={n.label} onClick={() => { if (n.id) go(n.id); else onOpenAuth(); close(); }}
             className="flex items-center gap-3 px-4 py-3.5 rounded-xl c-fill text-right font-bold c-fs-15">
             <n.icon size={18} className="c-text" /> {n.label}
           </button>
@@ -700,10 +704,14 @@ function OrdersPage({ orders, go, submitReview }) {
 
             {reviewedIds.includes(o.id) ? (
               <p className="c-fs-11 c-text-dim mt-3 pt-3 border-t c-border-line-strong">✓ شكرًا، تم إرسال مراجعتك لهذا الطلب</p>
-            ) : reviewingId === o.id ? (
-              <ReviewForm orderId={o.id} submitReview={submitReview} onDone={() => { setReviewedIds(p => [...p, o.id]); setReviewingId(null); }} />
+            ) : (o.status === "تم التسليم" || o.status === "مكتمل") ? (
+              reviewingId === o.id ? (
+                <ReviewForm orderId={o.id} submitReview={submitReview} onDone={() => { setReviewedIds(p => [...p, o.id]); setReviewingId(null); }} />
+              ) : (
+                <button onClick={() => setReviewingId(o.id)} className="c-fs-11 font-bold c-text-dim mt-3 pt-3 border-t c-border-line-strong w-full text-right">اترك تقييمك لهذا الطلب ✍️</button>
+              )
             ) : (
-              <button onClick={() => setReviewingId(o.id)} className="c-fs-11 font-bold c-text-dim mt-3 pt-3 border-t c-border-line-strong w-full text-right">اترك تقييمك لهذا الطلب ✍️</button>
+              <p className="c-fs-11 c-text-dim3 mt-3 pt-3 border-t c-border-line-strong">تقدر تقيّم الطلب بعد إتمام الدفع والتسليم</p>
             )}
           </div>
         ))}
@@ -713,38 +721,90 @@ function OrdersPage({ orders, go, submitReview }) {
 }
 
 /* ============================= Login Page ============================= */
-function LoginPage({ login, go }) {
+function AuthForm({ login, signup, onSuccess }) {
+  const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const canSubmit = mode === "login"
+    ? email.trim() && password
+    : name.trim() && phone.trim() && email.trim() && password.length >= 6;
+
   async function handleSubmit() {
-    if (!phone.trim()) return;
+    if (!canSubmit || loading) return;
     setLoading(true);
-    await login(phone.trim(), password);
+    const ok = mode === "login"
+      ? await login(email.trim(), password)
+      : await signup(name.trim(), phone.trim(), email.trim(), password);
     setLoading(false);
+    if (ok) onSuccess?.();
   }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex c-fill rounded-xl p-1 mb-1">
+        <button onClick={() => setMode("login")} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${mode === "login" ? "c-bg-text c-text-bg" : "c-text-dim"}`}>دخول</button>
+        <button onClick={() => setMode("signup")} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${mode === "signup" ? "c-bg-text c-text-bg" : "c-text-dim"}`}>حساب جديد</button>
+      </div>
+
+      {mode === "signup" && (
+        <>
+          <div>
+            <label className="text-xs font-bold c-text-dim2 block mb-1.5">الاسم الكامل</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="اسمك الكامل" className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-3 text-sm outline-none focus:c-border-text" />
+          </div>
+          <div>
+            <label className="text-xs font-bold c-text-dim2 block mb-1.5">رقم الجوال</label>
+            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="05xxxxxxxx" dir="ltr" className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-3 text-sm outline-none focus:c-border-text" />
+          </div>
+        </>
+      )}
+      <div>
+        <label className="text-xs font-bold c-text-dim2 block mb-1.5">البريد الإلكتروني</label>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" dir="ltr" className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-3 text-sm outline-none focus:c-border-text" />
+      </div>
+      <div>
+        <label className="text-xs font-bold c-text-dim2 block mb-1.5">كلمة المرور {mode === "signup" && <span className="c-text-dim3">(6 أحرف على الأقل)</span>}</label>
+        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-3 text-sm outline-none focus:c-border-text" />
+      </div>
+      <button onClick={handleSubmit} disabled={!canSubmit || loading}
+        className="w-full mt-1 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
+        {loading ? "جاري المعالجة..." : mode === "login" ? "دخول" : "إنشاء الحساب"}
+      </button>
+      {mode === "signup" && (
+        <p className="text-center c-fs-10-5 c-text-dim3 leading-5">بعد إنشاء الحساب، تحقق من بريدك الإلكتروني لتأكيده إذا طُلب منك ذلك.</p>
+      )}
+    </div>
+  );
+}
+
+function AuthModal({ open, onClose, login, signup }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[60] c-bg75 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="c-surface border c-border-line-strong rounded-2xl w-full max-w-sm p-6 my-16 sm:my-0" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-5">
+          <span className="font-extrabold text-lg" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>حسابك في بطاطا 🥔</span>
+          <button onClick={onClose} className="p-1.5 rounded-lg c-fill"><X size={18} /></button>
+        </div>
+        <AuthForm login={login} signup={signup} onSuccess={onClose} />
+      </div>
+    </div>
+  );
+}
+
+function LoginPage({ login, signup, go }) {
   return (
     <div className="max-w-sm mx-auto px-4 py-16">
       <div className="text-center mb-8">
         <span className="font-extrabold text-4xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>بطاطا</span>
-        <h1 className="font-extrabold text-2xl mt-4" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>تسجيل الدخول</h1>
-        <p className="c-text-dim2 text-xs mt-1">ادخل حسابك في متجر بطاطا</p>
+        <h1 className="font-extrabold text-2xl mt-4" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>حسابك في متجر بطاطا</h1>
+        <p className="c-text-dim2 text-xs mt-1">سجل دخولك أو أنشئ حساب جديد</p>
       </div>
-      <div className="flex flex-col gap-3">
-        <div>
-          <label className="text-xs font-bold c-text-dim2 block mb-1.5">رقم الجوال أو الإيميل</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="05xxxxxxxx" className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-3 text-sm outline-none focus:c-border-text" />
-        </div>
-        <div>
-          <label className="text-xs font-bold c-text-dim2 block mb-1.5">كلمة المرور</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-3 text-sm outline-none focus:c-border-text" />
-        </div>
-        <button onClick={handleSubmit} disabled={!phone.trim() || loading}
-          className="w-full mt-2 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">{loading ? "جاري الدخول..." : "دخول"}</button>
-        <p className="text-center c-fs-10-5 c-text-dim3 mt-2 leading-5">
-          إذا عندك حساب أدمن، ادخل بالإيميل وكلمة المرور الحقيقيين. غير كذا راح تدخل كزائر للتسوق فقط.
-        </p>
-      </div>
+      <AuthForm login={login} signup={signup} onSuccess={() => go("home")} />
     </div>
   );
 }
@@ -941,7 +1001,7 @@ function SupportInbox({ addToast }) {
         {!loading && sessions.length === 0 && <p className="p-4 c-text-dim2 text-xs">لا توجد محادثات بعد.</p>}
         {sessions.map(s => (
           <button key={s.session_id} onClick={() => setActiveSession(s.session_id)} className={`w-full text-right px-3 py-3 border-b c-border-line text-xs ${activeSession === s.session_id ? "c-fill" : ""}`}>
-            <div className="font-bold mb-0.5">زائر {s.session_id.slice(-5)}</div>
+            <div className="font-bold mb-0.5" dir="ltr">{s.session_id}</div>
             <div className="c-text-dim2 truncate">{s.last.message}</div>
           </button>
         ))}
@@ -954,6 +1014,7 @@ function SupportInbox({ addToast }) {
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
               {messages.map(m => (
                 <div key={m.id} className={`max-w-[75%] px-3 py-2 rounded-xl text-xs leading-6 ${m.sender === "admin" ? "c-bg-text c-text-bg self-end" : "c-fill self-start"}`}>
+                  {m.sender === "ai" && <div className="c-fs-10 font-bold c-text-dim2 mb-0.5">🤖 المساعد الذكي</div>}
                   {m.message}
                 </div>
               ))}
@@ -1276,36 +1337,24 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
 }
 
 /* ============================= Chat Widget (دعم فني مباشر) ============================= */
-function getChatSessionId() {
-  try {
-    let id = window.localStorage.getItem("batata:chat_session");
-    if (!id) {
-      id = "s" + Date.now() + Math.random().toString(36).slice(2, 8);
-      window.localStorage.setItem("batata:chat_session", id);
-    }
-    return id;
-  } catch { return "guest"; }
-}
-
-function ChatWidget() {
+function ChatWidget({ user, onOpenAuth }) {
   const [open, setOpen] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [unread, setUnread] = useState(0);
+  const [aiThinking, setAiThinking] = useState(false);
   const scrollRef = useRef(null);
-
-  useEffect(() => { setSessionId(getChatSessionId()); }, []);
+  const sessionId = user?.email || null;
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) { setMessages([]); return; }
     (async () => {
       const { data } = await supabase.from("support_messages").select("*").eq("session_id", sessionId).order("created_at", { ascending: true });
       if (data) setMessages(data);
     })();
     const channel = supabase.channel("chat-" + sessionId)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `session_id=eq.${sessionId}` }, (payload) => {
-        setMessages(prev => [...prev, payload.new]);
+        setMessages(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]);
         if (payload.new.sender === "admin" && !open) setUnread(u => u + 1);
       })
       .subscribe();
@@ -1313,32 +1362,53 @@ function ChatWidget() {
   }, [sessionId, open]);
 
   useEffect(() => { if (open) setUnread(0); }, [open]);
-  useEffect(() => { scrollRef.current?.scrollTo?.(0, scrollRef.current.scrollHeight); }, [messages, open]);
+  useEffect(() => { scrollRef.current?.scrollTo?.(0, scrollRef.current.scrollHeight); }, [messages, open, aiThinking]);
 
   async function send() {
     if (!text.trim() || !sessionId) return;
     const msg = text.trim();
     setText("");
-    await supabase.from("support_messages").insert({ id: "m" + Date.now(), session_id: sessionId, sender: "user", message: msg });
+    await supabase.from("support_messages").insert({ id: "u" + Date.now(), session_id: sessionId, sender: "user", message: msg });
+
+    // رد فوري من المساعد الذكي (يقرأ سياق آخر رسائل المحادثة)
+    setAiThinking(true);
+    try {
+      const { data: fnData } = await supabase.functions.invoke("ai-support", {
+        body: { message: msg, history: messages.slice(-8).map(m => ({ sender: m.sender, message: m.message })) },
+      });
+      const reply = fnData?.reply;
+      if (reply) {
+        await supabase.from("support_messages").insert({ id: "a" + Date.now(), session_id: sessionId, sender: "ai", message: reply });
+      }
+    } catch { /* المساعد الذكي غير متاح حاليًا، فريق الدعم البشري راح يشوف رسالتك */ }
+    setAiThinking(false);
+  }
+
+  function bubbleClick() {
+    if (!user) { onOpenAuth(); return; }
+    setOpen(o => !o);
   }
 
   return (
     <div className="fixed bottom-5 left-5 z-50" style={{ direction: "rtl" }}>
-      {open && (
+      {open && user && (
         <div className="c-surface border c-border-line-strong rounded-2xl shadow-2xl w-[calc(100vw-2.5rem)] max-w-[320px] flex flex-col mb-3 overflow-hidden" style={{ height: 420 }}>
           <div className="c-bg-text c-text-bg px-4 py-3 flex items-center justify-between">
-            <span className="font-extrabold text-sm">💬 الدعم الفني</span>
+            <span className="font-extrabold text-sm">🤖 مساعد بطاطا الذكي</span>
             <button onClick={() => setOpen(false)}><X size={18} /></button>
           </div>
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2">
             {messages.length === 0 && (
-              <p className="c-text-dim3 text-xs text-center mt-6">اكتب رسالتك وفريق الدعم بيرد عليك بأقرب وقت 👋</p>
+              <p className="c-text-dim3 text-xs text-center mt-6">اسأل المساعد الذكي أي سؤال، وإذا احتجت فريق الدعم البشري بيرد عليك بأقرب وقت 👋</p>
             )}
             {messages.map(m => (
-              <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-6 ${m.sender === "admin" ? "c-fill self-start" : "c-bg-text c-text-bg self-end"}`}>
+              <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-6 ${m.sender === "user" ? "c-bg-text c-text-bg self-end" : "c-fill self-start"}`}>
+                {m.sender === "ai" && <div className="c-fs-10 font-bold c-text-dim2 mb-0.5">🤖 المساعد الذكي</div>}
+                {m.sender === "admin" && <div className="c-fs-10 font-bold c-text-dim2 mb-0.5">فريق الدعم</div>}
                 {m.message}
               </div>
             ))}
+            {aiThinking && <div className="c-fill self-start px-3 py-2 rounded-xl text-xs c-text-dim2">🤖 المساعد يكتب...</div>}
           </div>
           <div className="p-2.5 border-t c-border-line flex gap-2">
             <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="اكتب رسالتك..." className="flex-1 c-bg border c-border-line-strong rounded-lg px-3 py-2 text-xs outline-none" />
@@ -1346,7 +1416,7 @@ function ChatWidget() {
           </div>
         </div>
       )}
-      <button onClick={() => setOpen(o => !o)} className="relative c-bg-text c-text-bg rounded-full w-14 h-14 flex items-center justify-center shadow-2xl">
+      <button onClick={bubbleClick} className="relative c-bg-text c-text-bg rounded-full w-14 h-14 flex items-center justify-center shadow-2xl">
         <MessageCircle size={24} />
         {unread > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center">{unread}</span>}
       </button>
@@ -1408,6 +1478,7 @@ export default function BatataStore() {
   const [orders, setOrders] = useState([]); // orders placed THIS session (guest-friendly, no account needed)
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [theme, setTheme] = useState("dark");
@@ -1447,6 +1518,18 @@ export default function BatataStore() {
     }
   }
 
+  async function checkIsAdmin(email) {
+    if (!email) return false;
+    try {
+      const { data } = await supabase.from("admin_users").select("email").eq("email", email).maybeSingle();
+      return !!data;
+    } catch { return false; }
+  }
+  async function userFromSession(sessionUser) {
+    const admin = await checkIsAdmin(sessionUser.email);
+    return { name: sessionUser.user_metadata?.name || sessionUser.email, email: sessionUser.email, isAdmin: admin };
+  }
+
   // load persisted data + supabase session
   useEffect(() => {
     (async () => {
@@ -1459,14 +1542,14 @@ export default function BatataStore() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        setUser({ name: session.user.email, isAdmin: true });
+        setUser(await userFromSession(session.user));
       }
       setLoaded(true);
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) setUser({ name: session.user.email, isAdmin: true });
-      else setUser(u => (u && u.isAdmin ? null : u));
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) setUser(await userFromSession(session.user));
+      else setUser(null);
     });
     return () => sub?.subscription?.unsubscribe();
   }, []);
@@ -1491,18 +1574,39 @@ export default function BatataStore() {
   }
   function removeFromCart(productId) { setCart(prev => prev.filter(c => c.productId !== productId)); addToast("تم حذف المنتج من السلة"); }
 
-  // تسجيل دخول: نحاول الدخول كأدمن حقيقي عبر Supabase Auth، وإذا فشل نعتبره زائر (بدون حساب حقيقي، للتسوق فقط)
-  async function login(emailOrPhone, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: emailOrPhone, password: password || "" });
-    if (!error && data?.user) {
-      setUser({ name: data.user.email, isAdmin: true });
-      addToast("أهلاً بك أيها الأدمن 👑");
-      go("admin");
-      return;
+  // تسجيل دخول بحساب حقيقي (عميل أو أدمن) عبر Supabase Auth
+  async function login(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: password || "" });
+    if (error || !data?.user) {
+      addToast("بيانات الدخول غير صحيحة", "error");
+      return false;
     }
-    setUser({ name: emailOrPhone, isAdmin: false });
-    addToast("تم تسجيل الدخول بنجاح ✓");
-    go("home");
+    const u = await userFromSession(data.user);
+    setUser(u);
+    addToast(u.isAdmin ? "أهلاً بك أيها الأدمن 👑" : `أهلاً بك ${u.name} 🥔`);
+    go(u.isAdmin ? "admin" : "home");
+    return true;
+  }
+
+  // إنشاء حساب جديد حقيقي (اسم + رقم جوال + إيميل + كلمة مرور)
+  async function signup(name, phone, email, password) {
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { name, phone } },
+    });
+    if (error) {
+      addToast(error.message === "User already registered" ? "هذا البريد مسجل مسبقًا، سجل دخول بدلاً من ذلك" : "تعذر إنشاء الحساب، حاول مجددًا", "error");
+      return false;
+    }
+    if (data?.session && data?.user) {
+      const u = await userFromSession(data.user);
+      setUser(u);
+      addToast(`تم إنشاء حسابك بنجاح، أهلاً بك ${name} 🥔`);
+      go("home");
+    } else {
+      addToast("تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتأكيده ✉️");
+    }
+    return true;
   }
 
   async function logout() {
@@ -1592,8 +1696,9 @@ export default function BatataStore() {
       `}</style>
 
       <Toasts toasts={toasts} />
-      <Header page={page} go={go} cartCount={cartCount} user={user} onOpenMenu={() => setMenuOpen(true)} theme={theme} toggleTheme={toggleTheme} />
-      <MobileMenu open={menuOpen} close={() => setMenuOpen(false)} go={go} user={user} />
+      <Header page={page} go={go} cartCount={cartCount} user={user} onOpenMenu={() => setMenuOpen(true)} theme={theme} toggleTheme={toggleTheme} onOpenAuth={() => setAuthModalOpen(true)} />
+      <MobileMenu open={menuOpen} close={() => setMenuOpen(false)} go={go} user={user} onOpenAuth={() => setAuthModalOpen(true)} />
+      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} login={login} signup={signup} />
 
       <main>
         {page === "home" && <HomePage products={products} categories={categories} reviews={reviews} go={go} addToCart={addToCart} />}
@@ -1602,7 +1707,7 @@ export default function BatataStore() {
         {page === "cart" && <CartPage cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} go={go} />}
         {page === "checkout" && <CheckoutPage cart={cart} products={products} placeOrder={placeOrder} go={go} user={user} />}
         {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} />}
-        {page === "login" && <LoginPage login={login} go={go} />}
+        {page === "login" && <LoginPage login={login} signup={signup} go={go} />}
         {page === "faq" && <FaqPage />}
         {page === "contact" && <ContactPage go={go} settings={settings} />}
         {page === "terms" && <TermsPage />}
@@ -1613,7 +1718,7 @@ export default function BatataStore() {
           : <div className="max-w-md mx-auto px-4 py-24 text-center c-text-dim2">هذه الصفحة خاصة بالأدمن فقط.</div>)}
       </main>
 
-      <ChatWidget />
+      <ChatWidget user={user} onOpenAuth={() => setAuthModalOpen(true)} />
       <Footer go={go} settings={settings} />
     </div>
   );
