@@ -100,7 +100,7 @@ function productToDb(p) {
   return { id: p.id, name: p.name, category: p.category, map: p.map, price: p.price, old_price: p.oldPrice ?? null, stock: p.stock, emoji: p.emoji, image: p.image || null, description: p.description, delivery: p.delivery, featured: !!p.featured };
 }
 function dbToOrder(o) {
-  return { id: o.id, items: o.items, total: Number(o.total), gameId: o.game_id, email: o.email, status: o.status, date: new Date(o.created_at).getTime() };
+  return { id: o.id, items: o.items, total: Number(o.total), gameId: o.game_id, email: o.email, paymentRef: o.payment_ref, status: o.status, date: new Date(o.created_at).getTime() };
 }
 
 function fileToDataUrl(file) {
@@ -578,12 +578,36 @@ function CartPage({ cart, products, updateQty, removeFromCart, go }) {
 }
 
 /* ============================= Checkout Page ============================= */
+const PAYMENT_INFO = {
+  bank: { name: "بنك البحرين والكويت (BBK)", holder: "AYMAN MOHSEN AHMED MOHAMED", iban: "BH72BBKU00200008541853" },
+  benefitPay: "32020619",
+};
+
+function CopyField({ label, value }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard?.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <div className="flex items-center justify-between gap-2 c-bg border c-border-line-strong rounded-lg px-3 py-2">
+      <div className="min-w-0">
+        <div className="c-fs-10-5 c-text-dim3">{label}</div>
+        <div className="text-sm font-bold truncate" dir="ltr">{value}</div>
+      </div>
+      <button onClick={copy} type="button" className="shrink-0 c-fs-11 font-bold c-fill px-2.5 py-1.5 rounded-md">{copied ? "✓ تم النسخ" : "نسخ"}</button>
+    </div>
+  );
+}
+
 function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const items = cart.map(c => ({ ...c, product: products.find(p => p.id === c.productId) })).filter(c => c.product);
   const subtotal = items.reduce((s, i) => s + i.product.price * i.qty, 0);
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(null);
   const [email, setEmail] = useState("");
+  const [paymentRef, setPaymentRef] = useState("");
   const discountAmount = applied ? Math.round(subtotal * applied.pct) : 0;
   const total = Math.max(0, subtotal - discountAmount);
 
@@ -628,15 +652,33 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
         <div className="flex justify-between font-extrabold text-lg pt-2 border-t c-border-line-strong"><span>الإجمالي</span><span className="c-text">{total} ﷼</span></div>
       </div>
 
-      <div className="c-fs-11 c-text-dim2 mt-3 leading-6">
-        💳 بوابة الدفع غير مفعّلة بعد في هذه النسخة التجريبية — عند ربطها لاحقاً ببوابة دفع حقيقية سيتم تحويلك لصفحة الدفع الآمن هنا.
+      <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
+        <h3 className="font-extrabold text-sm mb-3">💳 طريقة الدفع</h3>
+        <p className="c-fs-11 c-text-dim2 mb-3">حوّل المبلغ ({total} ﷼) عبر إحدى الوسيلتين، ثم اكتب رقم العملية أو ملاحظة تثبت التحويل تحت وأرسل الطلب. سيتم تأكيد طلبك يدويًا خلال ساعات من فريقنا فور التأكد من التحويل.</p>
+
+        <div className="flex flex-col gap-2 mb-3">
+          <div className="c-fs-11 font-bold c-text-dim mb-1">تحويل بنكي</div>
+          <CopyField label="البنك" value={PAYMENT_INFO.bank.name} />
+          <CopyField label="اسم صاحب الحساب" value={PAYMENT_INFO.bank.holder} />
+          <CopyField label="رقم الآيبان (IBAN)" value={PAYMENT_INFO.bank.iban} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="c-fs-11 font-bold c-text-dim mb-1">BenefitPay</div>
+          <CopyField label="رقم الهاتف" value={PAYMENT_INFO.benefitPay} />
+        </div>
+      </div>
+
+      <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
+        <label className="text-xs font-bold c-text-dim2 block mb-2">رقم العملية / ملاحظة إثبات التحويل (اختياري لكن يسرّع التأكيد)</label>
+        <input value={paymentRef} onChange={e => setPaymentRef(e.target.value)} placeholder="مثال: حوّلت الساعة 5:30 مساءً عبر BenefitPay" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
       </div>
 
       <button
-        onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null); }}
+        onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, paymentRef.trim() || null); }}
         disabled={!canSubmit}
         className="w-full mt-5 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
-        تأكيد الطلب والدفع
+        لقد حوّلت المبلغ — إرسال الطلب
       </button>
     </div>
   );
@@ -1294,6 +1336,9 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
                   <SendAccountEmailForm order={o} addToast={addToast} />
                 </>
               )}
+              {o.paymentRef && (
+                <div className="c-fs-11 c-soft-bg c-text-dim c-border-soft border rounded-md px-2.5 py-1.5 mb-2">💳 إثبات الدفع: {o.paymentRef}</div>
+              )}
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {o.items.map((i, idx) => <span key={idx} className="c-fs-11 c-fill rounded-md px-2 py-1">{i.product.emoji} {i.product.name} ×{i.qty}</span>)}
               </div>
@@ -1659,12 +1704,12 @@ export default function BatataStore() {
     return true;
   }
 
-  async function placeOrder(items, total, gameId, email) {
+  async function placeOrder(items, total, gameId, email, paymentRef) {
     const id = String(Date.now()).slice(-6);
     const dbItems = items.map(i => ({ productId: i.productId, qty: i.qty, product: i.product }));
-    const { error } = await supabase.from("orders").insert({ id, items: dbItems, total, game_id: gameId, email, status: "قيد المراجعة" });
+    const { error } = await supabase.from("orders").insert({ id, items: dbItems, total, game_id: gameId, email, payment_ref: paymentRef, status: "قيد المراجعة" });
     if (error) { addToast("تعذّر إرسال الطلب، حاول مرة ثانية", "error"); return; }
-    const order = { id, items, total, gameId, email, status: "قيد المراجعة", date: Date.now() };
+    const order = { id, items, total, gameId, email, paymentRef, status: "قيد المراجعة", date: Date.now() };
     setOrders(prev => [...prev, order]);
     setCart([]);
     addToast("تم إرسال طلبك بنجاح ✓ رقم الطلب #" + id);
@@ -1744,25 +1789,4 @@ export default function BatataStore() {
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} login={login} signup={signup} />
 
       <main>
-        {page === "home" && <HomePage products={products} categories={categories} reviews={reviews} go={go} addToCart={addToCart} />}
-        {page === "shop" && <ShopPage products={products} categories={categories} go={go} addToCart={addToCart} initialFilters={params} />}
-        {page === "product" && <ProductPage products={products} id={params.id} go={go} addToCart={addToCart} />}
-        {page === "cart" && <CartPage cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} go={go} />}
-        {page === "checkout" && <CheckoutPage cart={cart} products={products} placeOrder={placeOrder} go={go} user={user} />}
-        {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} user={user} deleteAccount={deleteAccount} />}
-        {page === "login" && <LoginPage login={login} signup={signup} go={go} />}
-        {page === "faq" && <FaqPage />}
-        {page === "contact" && <ContactPage go={go} settings={settings} />}
-        {page === "terms" && <TermsPage />}
-        {page === "privacy" && <PrivacyPage />}
-        {page === "refund" && <RefundPage />}
-        {page === "admin" && (user?.isAdmin
-          ? <AdminPage products={products} categories={categories} refreshProducts={refreshProducts} refreshCategories={refreshCategories} addToast={addToast} logout={logout} userEmail={user.name} settings={settings} refreshSettings={refreshSettings} />
-          : <div className="max-w-md mx-auto px-4 py-24 text-center c-text-dim2">هذه الصفحة خاصة بالأدمن فقط.</div>)}
-      </main>
-
-      <ChatWidget user={user} onOpenAuth={() => setAuthModalOpen(true)} />
-      <Footer go={go} settings={settings} />
-    </div>
-  );
-}
+        {page === "home"
