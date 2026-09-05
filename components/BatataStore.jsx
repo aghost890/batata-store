@@ -1714,6 +1714,7 @@ export default function BatataStore() {
     setCart([]);
     addToast("تم إرسال طلبك بنجاح ✓ رقم الطلب #" + id);
     go("orders");
+    supabase.functions.invoke("notify-new-order", { body: { orderId: id, email, total, items, paymentRef } }).catch(() => {});
   }
 
   async function submitReview(orderId, customerName, rating, text) {
@@ -1786,7 +1787,4 @@ export default function BatataStore() {
       <Toasts toasts={toasts} />
       <Header page={page} go={go} cartCount={cartCount} user={user} onOpenMenu={() => setMenuOpen(true)} theme={theme} toggleTheme={toggleTheme} onOpenAuth={() => setAuthModalOpen(true)} />
       <MobileMenu open={menuOpen} close={() => setMenuOpen(false)} go={go} user={user} onOpenAuth={() => setAuthModalOpen(true)} />
-      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} login={login} signup={signup} />
-
-      <main>
-        {page === "home"
+      <AuthModal open=
