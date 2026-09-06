@@ -607,12 +607,13 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(null);
   const [email, setEmail] = useState("");
-  const [paymentRef, setPaymentRef] = useState("");
+  const [confirmedTransfer, setConfirmedTransfer] = useState(false);
+  const [orderCode] = useState(() => String(Date.now()).slice(-6));
   const discountAmount = applied ? Math.round(subtotal * applied.pct) : 0;
   const total = Math.max(0, subtotal - discountAmount);
 
   const emailValid = /\S+@\S+\.\S+/.test(email);
-  const canSubmit = emailValid;
+  const canSubmit = emailValid && confirmedTransfer;
 
   if (items.length === 0) return <div className="max-w-3xl mx-auto px-4 py-24 text-center c-text-dim2">لا يوجد منتجات في السلة</div>;
 
@@ -654,7 +655,15 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
 
       <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
         <h3 className="font-extrabold text-sm mb-3">💳 طريقة الدفع</h3>
-        <p className="c-fs-11 c-text-dim2 mb-3">حوّل المبلغ ({total} ﷼) عبر إحدى الوسيلتين، ثم اكتب رقم العملية أو ملاحظة تثبت التحويل تحت وأرسل الطلب. سيتم تأكيد طلبك يدويًا خلال ساعات من فريقنا فور التأكد من التحويل.</p>
+        <p className="c-fs-11 c-text-dim2 mb-3">حوّل المبلغ ({total} ﷼) عبر إحدى الوسيلتين، واكتب <b>رقم الطلب أدناه</b> في خانة الوصف/الملاحظات أثناء التحويل، ثم أكّد بالأسفل وأرسل الطلب. سيتم تأكيد طلبك يدويًا خلال ساعات من فريقنا فور مطابقة رقم الطلب بالتحويل.</p>
+
+        <div className="c-fill rounded-lg px-3 py-2.5 mb-3 flex items-center justify-between gap-2">
+          <div>
+            <div className="c-fs-10-5 c-text-dim3">رقم الطلب — اكتبه في التحويل</div>
+            <div className="text-lg font-extrabold" dir="ltr">{orderCode}</div>
+          </div>
+          <button type="button" onClick={() => { navigator.clipboard?.writeText(orderCode); }} className="shrink-0 c-fs-11 font-bold c-bg-text c-text-bg px-3 py-2 rounded-md">نسخ الرقم</button>
+        </div>
 
         <div className="flex flex-col gap-2 mb-3">
           <div className="c-fs-11 font-bold c-text-dim mb-1">تحويل بنكي</div>
@@ -669,16 +678,16 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
         </div>
       </div>
 
-      <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
-        <label className="text-xs font-bold c-text-dim2 block mb-2">رقم العملية / ملاحظة إثبات التحويل (اختياري لكن يسرّع التأكيد)</label>
-        <input value={paymentRef} onChange={e => setPaymentRef(e.target.value)} placeholder="مثال: حوّلت الساعة 5:30 مساءً عبر BenefitPay" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text" />
-      </div>
+      <label className="c-surface border c-border-line rounded-xl p-4 mt-4 flex items-start gap-3 cursor-pointer">
+        <input type="checkbox" checked={confirmedTransfer} onChange={e => setConfirmedTransfer(e.target.checked)} className="mt-1 w-5 h-5 shrink-0" />
+        <span className="text-sm">أؤكد أنني قمت بتحويل مبلغ <b>{total} ﷼</b> وكتبت رقم الطلب <b dir="ltr">{orderCode}</b> في خانة الوصف/الملاحظات أثناء التحويل.</span>
+      </label>
 
       <button
-        onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, paymentRef.trim() || null); }}
+        onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, "أكّد العميل التحويل ✓", orderCode); }}
         disabled={!canSubmit}
         className="w-full mt-5 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
-        لقد حوّلت المبلغ — إرسال الطلب
+        إرسال الطلب
       </button>
     </div>
   );
@@ -1704,8 +1713,8 @@ export default function BatataStore() {
     return true;
   }
 
-  async function placeOrder(items, total, gameId, email, paymentRef) {
-    const id = String(Date.now()).slice(-6);
+  async function placeOrder(items, total, gameId, email, paymentRef, presetId) {
+    const id = presetId || String(Date.now()).slice(-6);
     const dbItems = items.map(i => ({ productId: i.productId, qty: i.qty, product: i.product }));
     const { error } = await supabase.from("orders").insert({ id, items: dbItems, total, game_id: gameId, email, payment_ref: paymentRef, status: "قيد المراجعة" });
     if (error) { addToast("تعذّر إرسال الطلب، حاول مرة ثانية", "error"); return; }
