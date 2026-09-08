@@ -582,6 +582,7 @@ const PAYMENT_INFO = {
   bank: { name: "بنك البحرين والكويت (BBK)", holder: "AYMAN MOHSEN AHMED MOHAMED", iban: "BH72BBKU00200008541853" },
   benefitPay: "32020619",
 };
+const PAYPAL_CLIENT_ID = "BAAiwk8rJSwByVDP-P3zz9WhMreu_L8m7eflo6cT171TOwaKX6uBYt5_p5yYUzvJaXv3_GseZDG09ynU9s";
 
 function CopyField({ label, value }) {
   const [copied, setCopied] = useState(false);
@@ -609,11 +610,48 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const [email, setEmail] = useState("");
   const [confirmedTransfer, setConfirmedTransfer] = useState(false);
   const [orderCode] = useState(() => String(Date.now()).slice(-6));
+  const [payMethod, setPayMethod] = useState("manual"); // "manual" | "paypal"
+  const [paypalReady, setPaypalReady] = useState(false);
+  const [paypalError, setPaypalError] = useState("");
+  const paypalContainerRef = useRef(null);
   const discountAmount = applied ? Math.round(subtotal * applied.pct) : 0;
   const total = Math.max(0, subtotal - discountAmount);
 
   const emailValid = /\S+@\S+\.\S+/.test(email);
   const canSubmit = emailValid && confirmedTransfer;
+
+  useEffect(() => {
+    if (payMethod !== "paypal" || !emailValid) return;
+    if (window.paypal) { setPaypalReady(true); return; }
+    const script = document.createElement("script");
+    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD`;
+    script.onload = () => setPaypalReady(true);
+    script.onerror = () => setPaypalError("تعذّر تحميل بوابة PayPal، حاول لاحقًا أو استخدم الدفع اليدوي.");
+    document.body.appendChild(script);
+  }, [payMethod, emailValid]);
+
+  useEffect(() => {
+    if (!paypalReady || payMethod !== "paypal" || !window.paypal || !paypalContainerRef.current) return;
+    paypalContainerRef.current.innerHTML = "";
+    window.paypal.Buttons({
+      createOrder: async () => {
+        const { data, error } = await supabase.functions.invoke("paypal-create-order", { body: { amountBHD: total } });
+        if (error || !data?.id) { setPaypalError("تعذّر إنشاء طلب الدفع."); throw new Error("create order failed"); }
+        return data.id;
+      },
+      onApprove: async (data) => {
+        const { data: res, error } = await supabase.functions.invoke("paypal-capture-order", {
+          body: { orderID: data.orderID, items, totalBHD: total, email: email.trim(), orderCode },
+        });
+        if (error || !res?.success) { setPaypalError("تم الدفع لكن حدث خطأ بتسجيل الطلب، تواصل معنا بإرفاق رقم العملية."); return; }
+        setPaypalError("");
+        window.location.hash = "";
+        alert("تم الدفع بنجاح ✓ رقم طلبك #" + res.orderId);
+        window.location.reload();
+      },
+      onError: () => setPaypalError("حدث خطأ أثناء الدفع عبر PayPal، حاول مرة أخرى."),
+    }).render(paypalContainerRef.current);
+  }, [paypalReady, payMethod]);
 
   if (items.length === 0) return <div className="max-w-3xl mx-auto px-4 py-24 text-center c-text-dim2">لا يوجد منتجات في السلة</div>;
 
@@ -655,40 +693,67 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
 
       <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
         <h3 className="font-extrabold text-sm mb-3">💳 طريقة الدفع</h3>
-        <p className="c-fs-11 c-text-dim2 mb-3">حوّل المبلغ ({total} ﷼) عبر إحدى الوسيلتين، واكتب <b>رقم الطلب أدناه</b> في خانة الوصف/الملاحظات أثناء التحويل، ثم أكّد بالأسفل وأرسل الطلب. سيتم تأكيد طلبك يدويًا خلال ساعات من فريقنا فور مطابقة رقم الطلب بالتحويل.</p>
 
-        <div className="c-fill rounded-lg px-3 py-2.5 mb-3 flex items-center justify-between gap-2">
+        <div className="flex gap-2 mb-4">
+          <button type="button" onClick={() => setPayMethod("manual")} className={`flex-1 py-2.5 rounded-lg text-sm font-bold border ${payMethod === "manual" ? "c-bg-text c-text-bg" : "c-border-line-strong"}`}>تحويل بنكي / BenefitPay</button>
+          <button type="button" onClick={() => setPayMethod("paypal")} className={`flex-1 py-2.5 rounded-lg text-sm font-bold border ${payMethod === "paypal" ? "c-bg-text c-text-bg" : "c-border-line-strong"}`}>PayPal (بطاقة)</button>
+        </div>
+
+        {payMethod === "manual" ? (
+          <>
+            <p className="c-fs-11 c-text-dim2 mb-3">حوّل المبلغ ({total} ﷼) عبر إحدى الوسيلتين، واكتب <b>رقم الطلب أدناه</b> في خانة الوصف/الملاحظات أثناء التحويل، ثم أكّد بالأسفل وأرسل الطلب. سيتم تأكيد طلبك يدويًا خلال ساعات من فريقنا فور مطابقة رقم الطلب بالتحويل.</p>
+
+            <div className="c-fill rounded-lg px-3 py-2.5 mb-3 flex items-center justify-between gap-2">
+              <div>
+                <div className="c-fs-10-5 c-text-dim3">رقم الطلب — اكتبه في التحويل</div>
+                <div className="text-lg font-extrabold" dir="ltr">{orderCode}</div>
+              </div>
+              <button type="button" onClick={() => { navigator.clipboard?.writeText(orderCode); }} className="shrink-0 c-fs-11 font-bold c-bg-text c-text-bg px-3 py-2 rounded-md">نسخ الرقم</button>
+            </div>
+
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="c-fs-11 font-bold c-text-dim mb-1">تحويل بنكي</div>
+              <CopyField label="البنك" value={PAYMENT_INFO.bank.name} />
+              <CopyField label="اسم صاحب الحساب" value={PAYMENT_INFO.bank.holder} />
+              <CopyField label="رقم الآيبان (IBAN)" value={PAYMENT_INFO.bank.iban} />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="c-fs-11 font-bold c-text-dim mb-1">BenefitPay</div>
+              <CopyField label="رقم الهاتف" value={PAYMENT_INFO.benefitPay} />
+            </div>
+          </>
+        ) : (
           <div>
-            <div className="c-fs-10-5 c-text-dim3">رقم الطلب — اكتبه في التحويل</div>
-            <div className="text-lg font-extrabold" dir="ltr">{orderCode}</div>
+            {!emailValid ? (
+              <p className="c-fs-11 c-text-dim2">أدخل بريدك الإلكتروني بالأعلى أولًا لتفعيل الدفع عبر PayPal.</p>
+            ) : (
+              <>
+                <p className="c-fs-11 c-text-dim2 mb-3">الدفع فوري وآمن عبر PayPal (بطاقة ائتمان/خصم أو رصيد PayPal). المبلغ يُحوَّل تلقائيًا لما يعادل <b dir="ltr">{total} ﷼</b> بالدولار الأمريكي.</p>
+                {paypalError && <div className="text-xs text-red-500 mb-2">{paypalError}</div>}
+                {!paypalReady && <div className="c-fs-11 c-text-dim3">جاري تحميل بوابة الدفع…</div>}
+                <div ref={paypalContainerRef} />
+              </>
+            )}
           </div>
-          <button type="button" onClick={() => { navigator.clipboard?.writeText(orderCode); }} className="shrink-0 c-fs-11 font-bold c-bg-text c-text-bg px-3 py-2 rounded-md">نسخ الرقم</button>
-        </div>
-
-        <div className="flex flex-col gap-2 mb-3">
-          <div className="c-fs-11 font-bold c-text-dim mb-1">تحويل بنكي</div>
-          <CopyField label="البنك" value={PAYMENT_INFO.bank.name} />
-          <CopyField label="اسم صاحب الحساب" value={PAYMENT_INFO.bank.holder} />
-          <CopyField label="رقم الآيبان (IBAN)" value={PAYMENT_INFO.bank.iban} />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="c-fs-11 font-bold c-text-dim mb-1">BenefitPay</div>
-          <CopyField label="رقم الهاتف" value={PAYMENT_INFO.benefitPay} />
-        </div>
+        )}
       </div>
 
-      <label className="c-surface border c-border-line rounded-xl p-4 mt-4 flex items-start gap-3 cursor-pointer">
-        <input type="checkbox" checked={confirmedTransfer} onChange={e => setConfirmedTransfer(e.target.checked)} className="mt-1 w-5 h-5 shrink-0" />
-        <span className="text-sm">أؤكد أنني قمت بتحويل مبلغ <b>{total} ﷼</b> وكتبت رقم الطلب <b dir="ltr">{orderCode}</b> في خانة الوصف/الملاحظات أثناء التحويل.</span>
-      </label>
+      {payMethod === "manual" && (
+        <>
+          <label className="c-surface border c-border-line rounded-xl p-4 mt-4 flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" checked={confirmedTransfer} onChange={e => setConfirmedTransfer(e.target.checked)} className="mt-1 w-5 h-5 shrink-0" />
+            <span className="text-sm">أؤكد أنني قمت بتحويل مبلغ <b>{total} ﷼</b> وكتبت رقم الطلب <b dir="ltr">{orderCode}</b> في خانة الوصف/الملاحظات أثناء التحويل.</span>
+          </label>
 
-      <button
-        onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, "أكّد العميل التحويل ✓", orderCode); }}
-        disabled={!canSubmit}
-        className="w-full mt-5 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
-        إرسال الطلب
-      </button>
+          <button
+            onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, "أكّد العميل التحويل ✓", orderCode); }}
+            disabled={!canSubmit}
+            className="w-full mt-5 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
+            إرسال الطلب
+          </button>
+        </>
+      )}
     </div>
   );
 }
