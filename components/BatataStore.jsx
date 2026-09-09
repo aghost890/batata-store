@@ -1179,6 +1179,104 @@ function SupportInbox({ addToast }) {
   );
 }
 
+function StockManager({ products, addToast }) {
+  const [selectedProduct, setSelectedProduct] = useState(products[0]?.id || "");
+  const [bulkText, setBulkText] = useState("");
+  const [counts, setCounts] = useState({});
+  const [rows, setRows] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  async function loadCounts() {
+    const { data } = await supabase.from("account_stock").select("product_id, status");
+    if (!data) return;
+    const c = {};
+    data.forEach(r => {
+      if (!c[r.product_id]) c[r.product_id] = { available: 0, assigned: 0 };
+      c[r.product_id][r.status === "available" ? "available" : "assigned"]++;
+    });
+    setCounts(c);
+  }
+
+  async function loadRows(productId) {
+    const { data } = await supabase.from("account_stock").select("*").eq("product_id", productId).eq("status", "available").order("created_at", { ascending: true });
+    setRows(data || []);
+  }
+
+  useEffect(() => { loadCounts(); }, []);
+  useEffect(() => { if (selectedProduct) loadRows(selectedProduct); }, [selectedProduct]);
+
+  async function addBulk() {
+    if (!selectedProduct) { addToast("اختر منتجًا أولًا", "error"); return; }
+    const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) { addToast("أضف حساب واحد على الأقل", "error"); return; }
+    const parsed = lines.map(line => {
+      const parts = line.split(":");
+      return { product_id: selectedProduct, username: parts[0]?.trim() || "", password: parts[1]?.trim() || "", account_email: parts[2]?.trim() || null, status: "available" };
+    }).filter(r => r.username && r.password);
+    if (parsed.length === 0) { addToast("الصيغة غلط، استخدم username:password:email بكل سطر", "error"); return; }
+    setSaving(true);
+    const { error } = await supabase.from("account_stock").insert(parsed);
+    setSaving(false);
+    if (error) { addToast("تعذّر الإضافة: " + error.message, "error"); return; }
+    addToast(`تمت إضافة ${parsed.length} حساب للمخزون ✓`);
+    setBulkText("");
+    loadCounts();
+    loadRows(selectedProduct);
+  }
+
+  async function deleteRow(id) {
+    const { error } = await supabase.from("account_stock").delete().eq("id", id);
+    if (error) { addToast("تعذّر الحذف", "error"); return; }
+    loadCounts();
+    loadRows(selectedProduct);
+  }
+
+  return (
+    <div>
+      <p className="c-fs-11 c-text-dim2 mb-4">أضف حسابات جاهزة لكل منتج، تُسلَّم تلقائيًا للعميل فور تأكيد الدفع (PayPal تلقائيًا، أو التحويل اليدوي لما تحدّث حالة الطلب لـ"جاري التجهيز").</p>
+
+      <div className="grid md:grid-cols-2 gap-2 mb-5">
+        {products.map(p => {
+          const c = counts[p.id] || { available: 0, assigned: 0 };
+          return (
+            <button key={p.id} onClick={() => setSelectedProduct(p.id)}
+              className={`text-right p-3 rounded-lg border ${selectedProduct === p.id ? "c-bg-text c-text-bg" : "c-surface c-border-line"}`}>
+              <div className="font-bold text-sm">{p.name}</div>
+              <div className="c-fs-11 opacity-80">متوفر: {c.available} — مُسلَّم: {c.assigned}</div>
+            </button>
+          );
+        })}
+        {products.length === 0 && <p className="c-text-dim2 text-sm">أضف منتجات أولًا من تبويب "المنتجات".</p>}
+      </div>
+
+      {selectedProduct && (
+        <>
+          <div className="c-surface border c-border-line rounded-xl p-4 mb-5">
+            <label className="text-xs font-bold c-text-dim2 block mb-2">إضافة حسابات (سطر لكل حساب، بصيغة: username:password:email)</label>
+            <textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={5}
+              placeholder={"user1:pass123:acc1@email.com\nuser2:pass456:acc2@email.com"}
+              className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text font-mono" dir="ltr" />
+            <button onClick={addBulk} disabled={saving} className="mt-3 px-4 py-2.5 rounded-lg c-bg-text c-text-bg font-bold text-sm disabled:opacity-50">
+              {saving ? "جاري الإضافة..." : "إضافة للمخزون"}
+            </button>
+          </div>
+
+          <div className="c-surface border c-border-line rounded-xl overflow-hidden">
+            <div className="p-3 border-b c-border-line font-bold text-sm">الحسابات المتوفرة حاليًا ({rows.length})</div>
+            {rows.map(r => (
+              <div key={r.id} className="flex items-center justify-between px-3 py-2.5 border-b c-border-line last:border-0 c-fs-11">
+                <span dir="ltr" className="font-mono">{r.username} / {r.password}{r.account_email ? ` / ${r.account_email}` : ""}</span>
+                <button onClick={() => deleteRow(r.id)} className="p-1.5 rounded-md c-soft-bg c-text-dim2"><Trash2 size={13}/></button>
+              </div>
+            ))}
+            {rows.length === 0 && <div className="p-4 text-sm c-text-dim2">لا يوجد حسابات متوفرة لهذا المنتج.</div>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail, settings, refreshSettings }) {
   const [tab, setTab] = useState("products");
   const [editing, setEditing] = useState(null);
@@ -1288,6 +1386,11 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (error) { addToast("تعذّر تحديث الحالة", "error"); return; }
     addToast("تم تحديث حالة الطلب ✓");
+    if (status === "جاري التجهيز") {
+      supabase.functions.invoke("deliver-stock-account", { body: { orderId: id } })
+        .then(({ data }) => { if (data?.success) addToast("تم تسليم الحساب تلقائيًا من المخزون ✓"); loadOrders(); })
+        .catch(() => {});
+    }
     loadOrders();
   }
 
@@ -1311,7 +1414,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
       <p className="text-xs c-text-dim2 mb-6">مسجّل دخول كـ {userEmail} — البيانات هنا حقيقية ومتصلة بقاعدة بيانات Supabase، تظهر لكل زوار الموقع.</p>
 
       <div className="flex gap-2 mb-6 flex-wrap">
-        {[["products", "المنتجات"], ["categories", "الأقسام"], ["orders", "الطلبات"], ["support", "الدعم الفني"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
+        {[["products", "المنتجات"], ["categories", "الأقسام"], ["stock", "المخزون"], ["orders", "الطلبات"], ["support", "الدعم الفني"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab === id ? "c-bg-text c-text-bg" : "c-fill c-text-dim"}`}>{label}</button>
         ))}
       </div>
@@ -1396,6 +1499,8 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
           </div>
         </div>
       )}
+
+      {tab === "stock" && <StockManager products={products} addToast={addToast} />}
 
       {tab === "orders" && (
         <div className="flex flex-col gap-2">
