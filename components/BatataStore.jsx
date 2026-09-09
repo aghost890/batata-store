@@ -608,7 +608,6 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(null);
   const [email, setEmail] = useState("");
-  const [confirmedTransfer, setConfirmedTransfer] = useState(false);
   const [orderCode] = useState(() => String(Date.now()).slice(-6));
   const [payMethod, setPayMethod] = useState("manual"); // "manual" | "paypal"
   const [paypalReady, setPaypalReady] = useState(false);
@@ -618,7 +617,7 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const total = Math.max(0, subtotal - discountAmount);
 
   const emailValid = /\S+@\S+\.\S+/.test(email);
-  const canSubmit = emailValid && confirmedTransfer;
+  const canSubmit = emailValid;
 
   useEffect(() => {
     if (payMethod !== "paypal" || !emailValid) return;
@@ -741,15 +740,12 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
 
       {payMethod === "manual" && (
         <>
-          <label className="c-surface border c-border-line rounded-xl p-4 mt-4 flex items-start gap-3 cursor-pointer">
-            <input type="checkbox" checked={confirmedTransfer} onChange={e => setConfirmedTransfer(e.target.checked)} className="mt-1 w-5 h-5 shrink-0" />
-            <span className="text-sm">أؤكد أنني قمت بتحويل مبلغ <b>{total} ﷼</b> وكتبت رقم الطلب <b dir="ltr">{orderCode}</b> في خانة الوصف/الملاحظات أثناء التحويل.</span>
-          </label>
+          <p className="c-fs-11 c-text-dim2 mt-4">تذكير: تأكد أنك حوّلت مبلغ <b className="c-text">{total} ﷼</b> وكتبت رقم الطلب <b dir="ltr">{orderCode}</b> في خانة الوصف/الملاحظات قبل إرسال الطلب.</p>
 
           <button
-            onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, "أكّد العميل التحويل ✓", orderCode); }}
+            onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, "بانتظار تأكيد التحويل", orderCode); }}
             disabled={!canSubmit}
-            className="w-full mt-5 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
+            className="w-full mt-3 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
             إرسال الطلب
           </button>
         </>
@@ -847,6 +843,13 @@ function OrdersPage({ orders, go, submitReview, user, deleteAccount }) {
             <div className="flex justify-between text-sm font-bold pt-2 border-t c-border-line-strong">
               <span className="c-text-dim2">الإجمالي</span><span className="c-text">{o.total} ﷼</span>
             </div>
+
+            {(o.status === "قيد المراجعة" || o.status === "جاري التجهيز") && (
+              <a href="https://discord.gg/r246DsY8g" target="_blank" rel="noopener noreferrer"
+                className="block c-fill rounded-lg px-3 py-2.5 mt-3 text-xs c-text-dim2 hover:opacity-80">
+                ⏳ لم تستلم حسابك بعد؟ تواصل معنا فورًا عبر <b className="c-text">ديسكورد الدعم الفني</b> وأرفق رقم طلبك <b dir="ltr">#{o.id}</b>
+              </a>
+            )}
 
             {reviewedIds.includes(o.id) ? (
               <p className="c-fs-11 c-text-dim mt-3 pt-3 border-t c-border-line-strong">✓ شكرًا، تم إرسال مراجعتك لهذا الطلب</p>
