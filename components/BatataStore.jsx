@@ -13,26 +13,28 @@ import {
 /* ============================= theme tokens ============================= */
 const THEMES = {
   dark: {
-    "--bg": "#000000", "--bg-90": "rgba(0,0,0,.92)",
-    "--surface": "#141414", "--surface2": "#1D1D1D",
-    "--text": "#FFFFFF", "--text-dim": "#B5B5B5", "--text-dim2": "#8A8A8A", "--text-dim3": "#6B6B6B",
-    "--soft-bg": "rgba(255,255,255,.08)", "--soft-border": "rgba(255,255,255,.20)",
-    "--line": "rgba(255,255,255,.08)", "--line-strong": "rgba(255,255,255,.16)",
-    "--fill": "rgba(255,255,255,.06)", "--fill-strong": "rgba(255,255,255,.13)",
+    "--bg": "#15100C", "--bg-90": "rgba(21,16,12,.92)",
+    "--surface": "#1F1712", "--surface2": "#2B1F16",
+    "--text": "#F7F1E6", "--text-dim": "#C9BCA8", "--text-dim2": "#9C8E7A", "--text-dim3": "#786C5C",
+    "--soft-bg": "rgba(247,241,230,.08)", "--soft-border": "rgba(247,241,230,.20)",
+    "--line": "rgba(247,241,230,.09)", "--line-strong": "rgba(247,241,230,.17)",
+    "--fill": "rgba(247,241,230,.06)", "--fill-strong": "rgba(247,241,230,.13)",
+    "--accent": "#EFA53C", "--accent-2": "#F5C874", "--accent-soft": "rgba(239,165,60,.14)", "--accent-text": "#15100C",
   },
   light: {
-    "--bg": "#FFFFFF", "--bg-90": "rgba(255,255,255,.92)",
-    "--surface": "#F3F3F3", "--surface2": "#EAEAEA",
-    "--text": "#000000", "--text-dim": "#4B4B4B", "--text-dim2": "#6E6E6E", "--text-dim3": "#8C8C8C",
-    "--soft-bg": "rgba(0,0,0,.05)", "--soft-border": "rgba(0,0,0,.16)",
-    "--line": "rgba(0,0,0,.09)", "--line-strong": "rgba(0,0,0,.16)",
-    "--fill": "rgba(0,0,0,.045)", "--fill-strong": "rgba(0,0,0,.08)",
+    "--bg": "#FBF7EF", "--bg-90": "rgba(251,247,239,.92)",
+    "--surface": "#F2E9D8", "--surface2": "#E9DBC0",
+    "--text": "#1E160E", "--text-dim": "#4E4130", "--text-dim2": "#726351", "--text-dim3": "#948572",
+    "--soft-bg": "rgba(30,22,14,.05)", "--soft-border": "rgba(30,22,14,.16)",
+    "--line": "rgba(30,22,14,.10)", "--line-strong": "rgba(30,22,14,.17)",
+    "--fill": "rgba(30,22,14,.045)", "--fill-strong": "rgba(30,22,14,.08)",
+    "--accent": "#B87A1E", "--accent-2": "#8F5D12", "--accent-soft": "rgba(184,122,30,.12)", "--accent-text": "#FBF7EF",
   },
 };
 
 /* ============================= design tokens =============================
-  نظام أبيض/أسود بالكامل عبر متغيرات CSS (--bg, --surface, --text ...)
-  يتغيّر تلقائياً حسب وضع الثيم (داكن / فاتح) بزر التبديل في الهيدر.
+  هوية "بطاطا": خلفية دافئة (بني محروق/كريمي) + لمسة ذهبية واحدة (--accent)
+  بدل الأبيض/الأسود الصرف، مع نفس منطق متغيّرات CSS القابلة للتبديل بين الثيمين.
 ============================================================================ */
 
 const SEED_CATEGORIES = [
@@ -203,8 +205,9 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onO
     <header className="sticky top-0 z-40 c-bg90 backdrop-blur-md border-b c-border-line">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
         <button onClick={() => go("home")} className="flex items-center gap-2 shrink-0">
+          <span className="w-8 h-8 rounded-full c-accent-grad flex items-center justify-center text-base shrink-0">🥔</span>
           <span className="font-extrabold text-xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
-            متجر <span className="c-text">بطاطا</span>
+            متجر بطاطا
           </span>
         </button>
 
@@ -212,7 +215,7 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onO
           {NAV.map(n => (
             <button key={n.id}
               onClick={() => go(n.id === "shop-offers" ? "shop" : n.id, n.id === "shop-offers" ? { offersOnly: true } : undefined)}
-              className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${page === n.id ? "c-text c-soft-bg" : "c-text-dim hover:c-text"}`}>
+              className={`px-3 py-2 rounded-lg text-sm font-bold transition-colors ${page === n.id ? "c-accent c-accent-soft-bg" : "c-text-dim hover:c-text"}`}>
               {n.label}
             </button>
           ))}
@@ -226,18 +229,18 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onO
           <button onClick={() => go("cart")} className="relative p-2.5 rounded-xl c-fill hover:c-fill-strong transition-colors">
             <ShoppingCart size={19} />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -left-1 c-bg-text c-text-bg c-fs-10 font-extrabold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -left-1 c-accent-bg c-accent-text-on c-fs-10 font-extrabold w-5 h-5 rounded-full flex items-center justify-center">
                 {cartCount}
               </span>
             )}
           </button>
           <button onClick={() => user ? go(user.isAdmin ? "admin" : "orders") : onOpenAuth()}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl c-bg-text c-text-bg font-extrabold text-sm hover:brightness-110 transition">
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl c-cta font-extrabold text-sm transition">
             {user ? (user.isAdmin ? <Settings size={16} /> : <Package size={16} />) : <LogIn size={16} />}
             {user ? (user.isAdmin ? "لوحة التحكم" : user.name) : "تسجيل الدخول"}
           </button>
           <button onClick={() => user ? go(user.isAdmin ? "admin" : "orders") : onOpenAuth()}
-            aria-label="الحساب" className="sm:hidden p-2.5 rounded-xl c-bg-text c-text-bg">
+            aria-label="الحساب" className="sm:hidden p-2.5 rounded-xl c-cta">
             {user ? (user.isAdmin ? <Settings size={18} /> : <Package size={18} />) : <LogIn size={18} />}
           </button>
           <button className="md:hidden p-2.5 rounded-xl c-fill" onClick={onOpenMenu}><Menu size={19} /></button>
@@ -278,11 +281,11 @@ function MobileMenu({ open, close, go, user, onOpenAuth }) {
 /* ============================= Product Card ============================= */
 function ProductCard({ p, go, addToCart }) {
   return (
-    <div className="group c-bg border-2 c-border-text rounded-2xl overflow-hidden transition-all flex flex-col"
+    <div className={`group c-bg border-2 rounded-2xl overflow-hidden transition-all flex flex-col ${p.featured ? "c-accent-border c-accent-glow" : "c-border-line-strong"}`}
       style={{ clipPath: "polygon(0 0, 100% 0, 100% 92%, 92% 100%, 0 100%)" }}>
       <button onClick={() => go("product", { id: p.id })} className="relative h-32 flex items-center justify-center c-grad-surface text-5xl overflow-hidden">
         {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : p.emoji}
-        {p.discount ? <Badge className="absolute top-2 right-2 c-soft-bg c-text c-border-soft">خصم {p.discount}%</Badge> : null}
+        {p.discount ? <Badge className="absolute top-2 right-2 c-accent-bg c-accent-text-on border-0">خصم {p.discount}%</Badge> : null}
         {p.stock === 0 && <div className="absolute inset-0 c-bg75 flex items-center justify-center text-xs font-bold c-text">نفدت الكمية</div>}
       </button>
       <div className="p-3.5 flex flex-col gap-1.5 flex-1">
@@ -291,7 +294,7 @@ function ProductCard({ p, go, addToCart }) {
         <StarRating rating={p.rating} reviews={p.reviews} />
         <div className="flex items-end justify-between mt-1.5">
           <div className="flex items-baseline gap-1.5">
-            <span className="font-extrabold c-text" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{p.price} ﷼</span>
+            <span className="font-extrabold c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{p.price} ﷼</span>
             {p.oldPrice && <span className="c-fs-11 c-text-dim2 line-through">{p.oldPrice} ﷼</span>}
           </div>
         </div>
@@ -299,7 +302,7 @@ function ProductCard({ p, go, addToCart }) {
           <button disabled={p.stock === 0} onClick={() => addToCart(p, 1)}
             className="flex-1 py-2 rounded-lg c-fill hover:c-fill-strong text-xs font-bold disabled:opacity-40">أضف للسلة</button>
           <button disabled={p.stock === 0} onClick={() => { addToCart(p, 1); go("checkout"); }}
-            className="flex-1 py-2 rounded-lg c-bg-text c-text-bg text-xs font-extrabold disabled:opacity-40">شراء الآن</button>
+            className="flex-1 py-2 rounded-lg c-cta text-xs font-extrabold disabled:opacity-40">شراء الآن</button>
         </div>
       </div>
     </div>
@@ -317,14 +320,17 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
       {/* HERO */}
       <section className="relative overflow-hidden border-b c-border-line">
         <div className="absolute inset-0 c-opacity-08" style={{ backgroundImage: "linear-gradient(var(--text) 1px, transparent 1px), linear-gradient(90deg, var(--text) 1px, transparent 1px)", backgroundSize: "34px 34px" }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[560px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, var(--accent-soft), transparent 70%)" }} />
         <div className="max-w-6xl mx-auto px-4 py-16 md:py-24 relative text-center flex flex-col items-center">
-          <Badge className="c-soft-bg c-text-dim c-border-soft mb-5">وجهتك الموثوقة لحسابات جاهزة</Badge>
-          <h1 className="font-extrabold text-3xl md:text-5xl leading-tight max-w-3xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
-            كل الحسابات اللي تدور عليها... في مكان واحد 🥔✨
+          <Badge className="c-accent-soft-bg c-accent border-0 mb-5">وجهتك الموثوقة لحسابات جاهزة</Badge>
+          <h1 className="font-extrabold text-3xl md:text-5xl leading-tight max-w-3xl flex items-center gap-3 flex-wrap justify-center" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
+            <span className="text-4xl md:text-6xl c-glow-dot inline-block">🥔</span>
+            كل الحسابات اللي تدور عليها... في مكان واحد
           </h1>
           <p className="c-text-dim mt-5 max-w-xl leading-8">حسابات مبتدئين، مميزة، VIP ونخبة — بتوثيق واضح وتسليم فوري بعد الدفع.</p>
           <div className="flex flex-wrap gap-3 justify-center mt-8">
-            <button onClick={() => go("shop")} className="px-6 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold hover:brightness-110 transition">تصفح المتجر</button>
+            <button onClick={() => go("shop")} className="px-6 py-3.5 rounded-xl c-cta font-extrabold transition">تصفح المتجر</button>
             <button onClick={() => go("shop", { offersOnly: true })} className="px-6 py-3.5 rounded-xl c-fill hover:c-fill-strong font-extrabold transition">شاهد العروض 🔥</button>
           </div>
         </div>
@@ -336,8 +342,8 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 gap-y-8">
           {categories.map(c => (
             <button key={c.id} onClick={() => go("shop", { category: c.id })}
-              className="relative flex flex-col items-center gap-1 c-bg border-2 c-border-text rounded-2xl pt-8 pb-3 px-2 transition-colors">
-              <span className="absolute -top-7 w-14 h-14 rounded-full c-bg border-2 c-border-text flex items-center justify-center text-2xl overflow-hidden">
+              className="relative flex flex-col items-center gap-1 c-bg border-2 c-border-line-strong hover:c-accent-border rounded-2xl pt-8 pb-3 px-2 transition-colors">
+              <span className="absolute -top-7 w-14 h-14 rounded-full c-accent-grad flex items-center justify-center text-2xl overflow-hidden">
                 {c.image ? <img src={c.image} alt={c.label} className="w-full h-full object-cover" /> : c.emoji}
               </span>
               <span className="font-extrabold c-fs-13-5 text-center leading-snug mt-1">{c.label}</span>
@@ -351,7 +357,7 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
       <section className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-extrabold text-xl flex items-center gap-2" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
-            <Sparkles size={20} className="c-text" /> المنتجات المميزة
+            <Sparkles size={20} className="c-accent" /> المنتجات المميزة
           </h2>
           <button onClick={() => go("shop")} className="text-xs font-bold c-text-dim">عرض الكل ←</button>
         </div>
@@ -386,8 +392,8 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
             { icon: LayoutGrid, label: "منتجات متنوعة", go: "shop" },
           ].map((f, i) => (
             <button key={i} onClick={() => go(f.go, f.params)}
-              className="flex flex-col items-center gap-2.5 c-surface border c-border-line hover:c-border-soft rounded-2xl py-6 px-2 text-center transition-colors">
-              <f.icon size={22} className="c-text-dim" />
+              className="group flex flex-col items-center gap-2.5 c-surface border c-border-line hover:c-accent-border rounded-2xl py-6 px-2 text-center transition-colors">
+              <f.icon size={22} className="c-text-dim group-hover:c-accent" />
               <span className="c-fs-12-5 font-bold">{f.label}</span>
             </button>
           ))}
@@ -526,7 +532,7 @@ function ProductPage({ products, id, go, addToCart }) {
             <button onClick={() => setQty(q => q + 1)}><Plus size={15}/></button>
           </div>
           <button disabled={p.stock===0} onClick={() => addToCart(p, qty)} className="flex-1 py-3 rounded-xl c-fill hover:c-fill-strong font-extrabold text-sm disabled:opacity-40">أضف للسلة</button>
-          <button disabled={p.stock===0} onClick={() => { addToCart(p, qty); go("checkout"); }} className="flex-1 py-3 rounded-xl c-bg-text c-text-bg font-extrabold text-sm disabled:opacity-40">شراء الآن</button>
+          <button disabled={p.stock===0} onClick={() => { addToCart(p, qty); go("checkout"); }} className="flex-1 py-3 rounded-xl c-cta font-extrabold text-sm disabled:opacity-40">شراء الآن</button>
         </div>
       </div>
     </div>
@@ -572,7 +578,7 @@ function CartPage({ cart, products, updateQty, removeFromCart, go }) {
         <span className="font-bold c-text-dim">الإجمالي</span>
         <span className="font-extrabold text-xl c-text">{total} ﷼</span>
       </div>
-      <button onClick={() => go("checkout")} className="w-full mt-4 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold">إتمام الطلب</button>
+      <button onClick={() => go("checkout")} className="w-full mt-4 py-3.5 rounded-xl c-cta font-extrabold">إتمام الطلب</button>
     </div>
   );
 }
@@ -702,12 +708,12 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
           <>
             <p className="c-fs-11 c-text-dim2 mb-3">حوّل المبلغ ({total} ﷼) عبر إحدى الوسيلتين، واكتب <b>رقم الطلب أدناه</b> في خانة الوصف/الملاحظات أثناء التحويل، ثم أكّد بالأسفل وأرسل الطلب. سيتم تأكيد طلبك يدويًا خلال ساعات من فريقنا فور مطابقة رقم الطلب بالتحويل.</p>
 
-            <div className="c-fill rounded-lg px-3 py-2.5 mb-3 flex items-center justify-between gap-2">
+            <div className="c-accent-soft-bg border c-accent-border rounded-lg px-3 py-2.5 mb-3 flex items-center justify-between gap-2">
               <div>
                 <div className="c-fs-10-5 c-text-dim3">رقم الطلب — اكتبه في التحويل</div>
-                <div className="text-lg font-extrabold" dir="ltr">{orderCode}</div>
+                <div className="text-lg font-extrabold c-accent" dir="ltr" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{orderCode}</div>
               </div>
-              <button type="button" onClick={() => { navigator.clipboard?.writeText(orderCode); }} className="shrink-0 c-fs-11 font-bold c-bg-text c-text-bg px-3 py-2 rounded-md">نسخ الرقم</button>
+              <button type="button" onClick={() => { navigator.clipboard?.writeText(orderCode); }} className="shrink-0 c-fs-11 font-bold c-cta px-3 py-2 rounded-md">نسخ الرقم</button>
             </div>
 
             <div className="flex flex-col gap-2 mb-3">
@@ -745,7 +751,7 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
           <button
             onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, "بانتظار تأكيد التحويل", orderCode); }}
             disabled={!canSubmit}
-            className="w-full mt-3 py-3.5 rounded-xl c-bg-text c-text-bg font-extrabold disabled:opacity-40">
+            className="w-full mt-3 py-3.5 rounded-xl c-cta font-extrabold disabled:opacity-40">
             إرسال الطلب
           </button>
         </>
@@ -1913,8 +1919,21 @@ export default function BatataStore() {
     <div dir="rtl" className="min-h-screen c-bg c-text" style={{ fontFamily: "'Tajawal', sans-serif", ...THEMES[theme] }}>
       <style>{`
         @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-        ::selection{background:var(--soft-border)}
+        @keyframes glowPulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+        ::selection{background:var(--accent-soft)}
         /* no global transition on * — it was causing a noticeable lag on theme toggle across many elements */
+
+        /* accent (gold) system */
+        .c-accent{color:var(--accent)}
+        .c-accent-bg{background-color:var(--accent)}
+        .c-accent-text-on{color:var(--accent-text)}
+        .c-accent-soft-bg{background-color:var(--accent-soft)}
+        .c-accent-border{border-color:var(--accent)}
+        .c-accent-grad{background-image:linear-gradient(135deg, var(--accent), var(--accent-2))}
+        .c-accent-glow{box-shadow:0 0 0 1px var(--accent-soft), 0 8px 24px -8px rgba(239,165,60,.45)}
+        .c-glow-dot{animation:glowPulse 2.4s ease-in-out infinite}
+        .c-cta{background-image:linear-gradient(135deg, var(--accent), var(--accent-2)); color:var(--accent-text)}
+        .c-cta:hover{filter:brightness(1.06)}
 
         /* backgrounds */
         .c-bg{background-color:var(--bg)}
