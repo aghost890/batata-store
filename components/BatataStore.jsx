@@ -791,11 +791,16 @@ function ReviewForm({ orderId, submitReview, onDone }) {
   );
 }
 
-function OrdersPage({ orders, go, submitReview, user, deleteAccount }) {
+function OrdersPage({ orders, go, submitReview, user, deleteAccount, updateProfile }) {
   const [reviewingId, setReviewingId] = useState(null);
   const [reviewedIds, setReviewedIds] = useState([]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [pName, setPName] = useState(user?.name || "");
+  const [pPhone, setPPhone] = useState(user?.phone || "");
+  const [pEmail, setPEmail] = useState(user?.email || "");
+  const [savingProfile, setSavingProfile] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
@@ -803,10 +808,51 @@ function OrdersPage({ orders, go, submitReview, user, deleteAccount }) {
     setDeleting(false);
   }
 
+  async function handleSaveProfile() {
+    setSavingProfile(true);
+    const ok = await updateProfile({ name: pName.trim(), phone: pPhone.trim(), email: pEmail.trim() });
+    setSavingProfile(false);
+    if (ok) setEditingProfile(false);
+  }
+
   const AccountSettings = user && (
     <div className="c-surface border c-border-line rounded-xl p-4 mb-6">
-      <h3 className="font-extrabold text-sm mb-1">إعدادات الحساب</h3>
-      <p className="c-fs-11 c-text-dim2 mb-3">مسجل دخول بـ {user.email || user.name}</p>
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-extrabold text-sm">إعدادات الحساب</h3>
+        {!editingProfile && (
+          <button onClick={() => { setPName(user.name || ""); setPPhone(user.phone || ""); setPEmail(user.email || ""); setEditingProfile(true); }}
+            className="c-fs-11 font-bold c-accent">تعديل البيانات</button>
+        )}
+      </div>
+
+      {!editingProfile ? (
+        <div className="c-fs-12 c-text-dim2 flex flex-col gap-1 mt-2 mb-3">
+          <span>الاسم: <b className="c-text">{user.name || "—"}</b></span>
+          <span>الهاتف: <b className="c-text" dir="ltr">{user.phone || "—"}</b></span>
+          <span>البريد الإلكتروني: <b className="c-text">{user.email}</b></span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2.5 mt-3 mb-3">
+          <div>
+            <label className="c-fs-10-5 font-bold c-text-dim3 block mb-1">الاسم</label>
+            <input value={pName} onChange={e => setPName(e.target.value)} className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm outline-none focus:c-accent-border" />
+          </div>
+          <div>
+            <label className="c-fs-10-5 font-bold c-text-dim3 block mb-1">رقم الهاتف</label>
+            <input value={pPhone} onChange={e => setPPhone(e.target.value)} dir="ltr" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm outline-none focus:c-accent-border" />
+          </div>
+          <div>
+            <label className="c-fs-10-5 font-bold c-text-dim3 block mb-1">البريد الإلكتروني</label>
+            <input value={pEmail} onChange={e => setPEmail(e.target.value)} dir="ltr" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm outline-none focus:c-accent-border" />
+            <p className="c-fs-10-5 c-text-dim3 mt-1">تغيير الإيميل يتطلب تأكيد من بريدك الحالي والجديد.</p>
+          </div>
+          <div className="flex gap-2 mt-1">
+            <button onClick={handleSaveProfile} disabled={savingProfile} className="flex-1 py-2 rounded-lg c-cta font-extrabold text-xs disabled:opacity-50">{savingProfile ? "جاري الحفظ..." : "حفظ التعديلات"}</button>
+            <button onClick={() => setEditingProfile(false)} className="flex-1 py-2 rounded-lg c-fill-strong font-bold text-xs">إلغاء</button>
+          </div>
+        </div>
+      )}
+
       {!confirmingDelete ? (
         <button onClick={() => setConfirmingDelete(true)} className="c-fs-12 font-bold text-red-500">حذف حسابي نهائيًا</button>
       ) : (
@@ -1790,7 +1836,7 @@ export default function BatataStore() {
   }
   async function userFromSession(sessionUser) {
     const admin = await checkIsAdmin(sessionUser.email);
-    return { name: sessionUser.user_metadata?.name || sessionUser.email, email: sessionUser.email, isAdmin: admin };
+    return { name: sessionUser.user_metadata?.name || sessionUser.email, phone: sessionUser.user_metadata?.phone || "", email: sessionUser.email, isAdmin: admin };
   }
 
   // load persisted data + supabase session
@@ -1889,6 +1935,20 @@ export default function BatataStore() {
     setUser(null);
     addToast("تم حذف حسابك نهائيًا");
     go("home");
+    return true;
+  }
+
+  async function updateProfile({ name, phone, email }) {
+    const payload = { data: { name, phone } };
+    if (email && email !== user?.email) payload.email = email;
+    const { data, error } = await supabase.auth.updateUser(payload);
+    if (error) { addToast("تعذّر تحديث البيانات: " + error.message, "error"); return false; }
+    if (payload.email) {
+      addToast("تم تحديث الاسم/الهاتف ✓ — تحقق من بريدك القديم والجديد لتأكيد تغيير الإيميل");
+    } else {
+      addToast("تم تحديث بياناتك ✓");
+    }
+    setUser(u => ({ ...u, name, phone, email: payload.email ? u.email : email }));
     return true;
   }
 
@@ -1996,7 +2056,7 @@ export default function BatataStore() {
         {page === "product" && <ProductPage products={products} id={params.id} go={go} addToCart={addToCart} />}
         {page === "cart" && <CartPage cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} go={go} />}
         {page === "checkout" && <CheckoutPage cart={cart} products={products} placeOrder={placeOrder} go={go} user={user} />}
-        {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} user={user} deleteAccount={deleteAccount} />}
+        {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} user={user} deleteAccount={deleteAccount} updateProfile={updateProfile} />}
         {page === "login" && <LoginPage login={login} signup={signup} go={go} />}
         {page === "faq" && <FaqPage />}
         {page === "contact" && <ContactPage go={go} settings={settings} />}
