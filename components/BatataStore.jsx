@@ -1329,6 +1329,99 @@ function StockManager({ products, addToast }) {
   );
 }
 
+function CustomersManager({ addToast }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [eName, setEName] = useState("");
+  const [ePhone, setEPhone] = useState("");
+  const [eEmail, setEEmail] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function loadUsers() {
+    setLoading(true);
+    const { data } = await supabase.functions.invoke("admin-list-users");
+    setLoading(false);
+    if (data?.users) setUsers(data.users);
+    else if (data?.error) addToast(data.error, "error");
+  }
+
+  useEffect(() => { loadUsers(); }, []);
+
+  function startEdit(u) {
+    setEditingId(u.id);
+    setEName(u.name || "");
+    setEPhone(u.phone || "");
+    setEEmail(u.email || "");
+  }
+
+  async function saveEdit(id) {
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke("admin-update-user", {
+      body: { userId: id, name: eName.trim(), phone: ePhone.trim(), email: eEmail.trim() },
+    });
+    setSaving(false);
+    if (error || data?.error) { addToast(data?.error || "تعذّر التحديث", "error"); return; }
+    addToast("تم تحديث بيانات العميل ✓");
+    setEditingId(null);
+    loadUsers();
+  }
+
+  const filtered = users.filter(u =>
+    !search.trim() ||
+    u.email?.toLowerCase().includes(search.toLowerCase()) ||
+    u.name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.phone?.includes(search)
+  );
+
+  return (
+    <div>
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث بالاسم أو الإيميل أو الهاتف..."
+        className="w-full c-surface border c-border-line-strong rounded-xl px-3.5 py-2.5 text-sm outline-none focus:c-accent-border mb-4" />
+
+      {loading && <p className="c-text-dim2 text-sm">جاري التحميل...</p>}
+      {!loading && filtered.length === 0 && <p className="c-text-dim2 text-sm">لا يوجد عملاء مطابقين.</p>}
+
+      <div className="flex flex-col gap-2">
+        {filtered.map(u => (
+          <div key={u.id} className="c-surface border c-border-line rounded-xl p-4">
+            {editingId === u.id ? (
+              <div className="flex flex-col gap-2.5">
+                <div>
+                  <label className="c-fs-10-5 font-bold c-text-dim3 block mb-1">الاسم</label>
+                  <input value={eName} onChange={e => setEName(e.target.value)} className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm outline-none focus:c-accent-border" />
+                </div>
+                <div>
+                  <label className="c-fs-10-5 font-bold c-text-dim3 block mb-1">الهاتف</label>
+                  <input value={ePhone} onChange={e => setEPhone(e.target.value)} dir="ltr" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm outline-none focus:c-accent-border" />
+                </div>
+                <div>
+                  <label className="c-fs-10-5 font-bold c-text-dim3 block mb-1">الإيميل</label>
+                  <input value={eEmail} onChange={e => setEEmail(e.target.value)} dir="ltr" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm outline-none focus:c-accent-border" />
+                </div>
+                <div className="flex gap-2 mt-1">
+                  <button onClick={() => saveEdit(u.id)} disabled={saving} className="flex-1 py-2 rounded-lg c-cta font-extrabold text-xs disabled:opacity-50">{saving ? "جاري الحفظ..." : "حفظ"}</button>
+                  <button onClick={() => setEditingId(null)} className="flex-1 py-2 rounded-lg c-fill-strong font-bold text-xs">إلغاء</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold text-sm truncate">{u.name || "بدون اسم"}</div>
+                  <div className="c-fs-11 c-text-dim2 truncate">{u.email}</div>
+                  {u.phone && <div className="c-fs-11 c-text-dim3" dir="ltr">{u.phone}</div>}
+                </div>
+                <button onClick={() => startEdit(u)} className="shrink-0 p-2 rounded-lg c-fill"><Edit3 size={15}/></button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail, settings, refreshSettings }) {
   const [tab, setTab] = useState("products");
   const [editing, setEditing] = useState(null);
@@ -1466,7 +1559,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
       <p className="text-xs c-text-dim2 mb-6">مسجّل دخول كـ {userEmail} — البيانات هنا حقيقية ومتصلة بقاعدة بيانات Supabase، تظهر لكل زوار الموقع.</p>
 
       <div className="flex gap-2 mb-6 flex-wrap">
-        {[["products", "المنتجات"], ["categories", "الأقسام"], ["stock", "المخزون"], ["orders", "الطلبات"], ["support", "الدعم الفني"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
+        {[["products", "المنتجات"], ["categories", "الأقسام"], ["stock", "المخزون"], ["orders", "الطلبات"], ["customers", "العملاء"], ["support", "الدعم الفني"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab === id ? "c-bg-text c-text-bg" : "c-fill c-text-dim"}`}>{label}</button>
         ))}
       </div>
@@ -1553,6 +1646,8 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
       )}
 
       {tab === "stock" && <StockManager products={products} addToast={addToast} />}
+
+      {tab === "customers" && <CustomersManager addToast={addToast} />}
 
       {tab === "orders" && (
         <div className="flex flex-col gap-2">
