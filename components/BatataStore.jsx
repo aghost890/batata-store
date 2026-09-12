@@ -1308,7 +1308,7 @@ function StockManager({ products, addToast }) {
             <textarea value={bulkText} onChange={e => setBulkText(e.target.value)} rows={5}
               placeholder={"user1:pass123:acc1@email.com\nuser2:pass456:acc2@email.com"}
               className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-border-text font-mono" dir="ltr" />
-            <button onClick={addBulk} disabled={saving} className="mt-3 px-4 py-2.5 rounded-lg c-bg-text c-text-bg font-bold text-sm disabled:opacity-50">
+            <button onClick={addBulk} disabled={saving} className="mt-3 px-4 py-2.5 rounded-lg c-cta font-bold text-sm disabled:opacity-50">
               {saving ? "جاري الإضافة..." : "إضافة للمخزون"}
             </button>
           </div>
@@ -1552,24 +1552,49 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="font-extrabold text-2xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>لوحة تحكم المتجر</h1>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2.5">
+          <span className="w-10 h-10 rounded-xl c-accent-grad flex items-center justify-center text-lg">🥔</span>
+          <h1 className="font-extrabold text-2xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>لوحة تحكم المتجر</h1>
+        </div>
         <button onClick={logout} className="c-fs-12 font-bold c-text-dim2 hover:c-text px-3 py-2 rounded-lg c-fill">تسجيل خروج</button>
       </div>
-      <p className="text-xs c-text-dim2 mb-6">مسجّل دخول كـ {userEmail} — البيانات هنا حقيقية ومتصلة بقاعدة بيانات Supabase، تظهر لكل زوار الموقع.</p>
+      <p className="text-xs c-text-dim2 mb-5">مسجّل دخول كـ {userEmail} — البيانات هنا حقيقية ومتصلة بقاعدة بيانات Supabase، تظهر لكل زوار الموقع.</p>
 
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {[["products", "المنتجات"], ["categories", "الأقسام"], ["stock", "المخزون"], ["orders", "الطلبات"], ["customers", "العملاء"], ["support", "الدعم الفني"], ["stats", "الإحصائيات"], ["settings", "الإعدادات"]].map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} className={`px-4 py-2 rounded-lg text-sm font-bold ${tab === id ? "c-bg-text c-text-bg" : "c-fill c-text-dim"}`}>{label}</button>
+      <div className="grid grid-cols-3 gap-2.5 mb-6">
+        <div className="c-surface border c-border-line rounded-xl px-3.5 py-3">
+          <div className="c-fs-10-5 c-text-dim3 mb-0.5">إجمالي الطلبات</div>
+          <div className="font-extrabold text-lg c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.count}</div>
+        </div>
+        <div className="c-surface border c-border-line rounded-xl px-3.5 py-3">
+          <div className="c-fs-10-5 c-text-dim3 mb-0.5">الإيرادات المكتملة</div>
+          <div className="font-extrabold text-lg c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.revenue} ﷼</div>
+        </div>
+        <div className="c-surface border c-border-line rounded-xl px-3.5 py-3 overflow-hidden">
+          <div className="c-fs-10-5 c-text-dim3 mb-0.5">الأكثر مبيعًا</div>
+          <div className="font-extrabold text-sm truncate">{stats.top}</div>
+        </div>
+      </div>
+
+      <div className="flex gap-1.5 mb-6 flex-wrap border-b c-border-line pb-3">
+        {[
+          ["products", "المنتجات", Package], ["categories", "الأقسام", LayoutGrid], ["stock", "المخزون", Store],
+          ["orders", "الطلبات", ShoppingCart], ["customers", "العملاء", LogIn], ["support", "الدعم الفني", Headphones],
+          ["stats", "الإحصائيات", TrendingUp], ["settings", "الإعدادات", Settings],
+        ].map(([id, label, Icon]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-bold transition-colors ${tab === id ? "c-accent-soft-bg c-accent" : "c-fill c-text-dim hover:c-text"}`}>
+            <Icon size={14} /> {label}
+          </button>
         ))}
       </div>
 
       {tab === "products" && (
         <div>
-          <button onClick={startNew} className="mb-4 flex items-center gap-1.5 px-4 py-2.5 rounded-lg c-soft-bg c-text-dim font-bold text-sm"><Plus size={15}/> إضافة منتج</button>
+          <button onClick={startNew} className="mb-4 flex items-center gap-1.5 px-4 py-2.5 rounded-lg c-cta font-bold text-sm"><Plus size={15}/> إضافة منتج</button>
 
           {editing && (
-            <div className="c-surface border c-border-soft rounded-xl p-4 mb-5 grid md:grid-cols-2 gap-3">
+            <div className="c-surface border c-accent-border rounded-xl p-4 mb-5 grid md:grid-cols-2 gap-3">
               <input placeholder="اسم المنتج" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm md:col-span-2" />
               <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm">
                 {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
@@ -1585,7 +1610,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
               <input placeholder="مدة التسليم" value={form.delivery} onChange={e => setForm({ ...form, delivery: e.target.value })} className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm md:col-span-2" />
               <textarea placeholder="الوصف" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm md:col-span-2" rows={2} />
               <div className="md:col-span-2 flex gap-2">
-                <button onClick={saveProduct} className="flex-1 py-2.5 rounded-lg c-bg-text c-text-bg font-extrabold text-sm flex items-center justify-center gap-1.5"><Check size={15}/> حفظ</button>
+                <button onClick={saveProduct} className="flex-1 py-2.5 rounded-lg c-cta font-extrabold text-sm flex items-center justify-center gap-1.5"><Check size={15}/> حفظ</button>
                 <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-lg c-fill font-bold text-sm">إلغاء</button>
               </div>
             </div>
@@ -1620,7 +1645,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
               <input placeholder="إيموجي (احتياطي إذا ما رفعت صورة)" value={catForm.emoji} onChange={e => setCatForm({ ...catForm, emoji: e.target.value })} className="c-bg border c-border-line-strong rounded-lg px-3 py-2 text-sm md:col-span-2" />
               <ImageUploadField image={catForm.image} onChange={(img) => setCatForm({ ...catForm, image: img })} addToast={addToast} />
               <div className="md:col-span-2 flex gap-2">
-                <button onClick={saveCategory} className="flex-1 py-2.5 rounded-lg c-bg-text c-text-bg font-extrabold text-sm flex items-center justify-center gap-1.5"><Check size={15}/> حفظ</button>
+                <button onClick={saveCategory} className="flex-1 py-2.5 rounded-lg c-cta font-extrabold text-sm flex items-center justify-center gap-1.5"><Check size={15}/> حفظ</button>
                 <button onClick={() => setEditingCat(null)} className="flex-1 py-2.5 rounded-lg c-fill font-bold text-sm">إلغاء</button>
               </div>
             </div>
@@ -1685,9 +1710,9 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
 
       {tab === "stats" && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="c-surface border c-border-line rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">إجمالي الطلبات</div><div className="font-extrabold text-2xl c-text">{stats.count}</div></div>
-          <div className="c-surface border c-border-line rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الإيرادات (طلبات مكتملة)</div><div className="font-extrabold text-2xl c-text-dim">{stats.revenue} ﷼</div></div>
-          <div className="c-surface border c-border-line rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الأكثر مبيعاً</div><div className="font-extrabold text-sm mt-1.5">{stats.top}</div></div>
+          <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">إجمالي الطلبات</div><div className="font-extrabold text-3xl c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.count}</div></div>
+          <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الإيرادات (طلبات مكتملة)</div><div className="font-extrabold text-3xl c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.revenue} ﷼</div></div>
+          <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الأكثر مبيعاً</div><div className="font-extrabold text-sm mt-1.5">{stats.top}</div></div>
         </div>
       )}
 
@@ -1703,7 +1728,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
               <label className="text-xs font-bold c-text-dim2 block mb-1.5">تأكيد كلمة المرور</label>
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" />
             </div>
-            <button onClick={changePassword} disabled={savingPassword} className="py-2.5 rounded-lg c-bg-text c-text-bg font-extrabold text-sm disabled:opacity-50">
+            <button onClick={changePassword} disabled={savingPassword} className="py-2.5 rounded-lg c-cta font-extrabold text-sm disabled:opacity-50">
               {savingPassword ? "جاري الحفظ..." : "حفظ كلمة المرور"}
             </button>
             <p className="c-fs-10-5 c-text-dim3 leading-5">
@@ -1730,7 +1755,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
               <label className="text-xs font-bold c-text-dim2 block mb-1.5">رابط TikTok</label>
               <input value={linksForm.tiktok_url} onChange={e => setLinksForm(f => ({ ...f, tiktok_url: e.target.value }))} placeholder="https://tiktok.com/@xxxxx" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" dir="ltr" />
             </div>
-            <button onClick={saveLinks} disabled={savingLinks} className="py-2.5 rounded-lg c-bg-text c-text-bg font-extrabold text-sm disabled:opacity-50">
+            <button onClick={saveLinks} disabled={savingLinks} className="py-2.5 rounded-lg c-cta font-extrabold text-sm disabled:opacity-50">
               {savingLinks ? "جاري الحفظ..." : "حفظ الروابط"}
             </button>
           </div>
