@@ -74,12 +74,25 @@ const SEED_PRODUCTS = [
     description: "حساب ذهبي من فئة النخبة، الكمية محدودة جدًا فلا تتأخر.", delivery: "خلال 20 دقيقة" },
 ];
 
+const CurrencyContext = React.createContext({ code: "BHD", rate: 1 });
+function useCurrency() { return React.useContext(CurrencyContext); }
+function PriceTag({ bhd, className = "" }) {
+  const { code, rate } = useCurrency();
+  const converted = code && code !== "BHD" && rate ? (Number(bhd) * rate).toFixed(2) : null;
+  return (
+    <span className={className}>
+      {bhd} ﷼
+      {converted && <span className="c-fs-10-5 c-text-dim3 font-normal"> (≈ {converted} {code})</span>}
+    </span>
+  );
+}
+
 const STATUS_STYLES = {
   "قيد المراجعة": "c-soft-bg c-text-dim2 c-border-soft",
-  "جاري التجهيز": "c-soft-bg c-text-dim c-border-line-strong",
-  "تم التسليم": "c-fill-strong c-text c-border-soft",
-  "مكتمل": "c-bg-text c-text-bg c-border-text",
-  "ملغي": "bg-transparent c-text-dim3 c-border-line-strong line-through",
+  "جاري التجهيز": "c-accent-soft-bg c-accent c-accent-border",
+  "تم التسليم": "c-accent-soft-bg c-accent c-accent-border",
+  "مكتمل": "c-accent-bg c-accent-text-on c-accent-border",
+  "ملغي": "bg-red-500/10 text-red-500 border-red-500/30 line-through",
 };
 const STATUS_LIST = ["قيد المراجعة", "جاري التجهيز", "تم التسليم", "مكتمل", "ملغي"];
 
@@ -279,12 +292,13 @@ function MobileMenu({ open, close, go, user, onOpenAuth }) {
 }
 
 /* ============================= Product Card ============================= */
-function ProductCard({ p, go, addToCart }) {
+function ProductCard({ p, go, addToCart, bestseller }) {
   return (
     <div className={`group c-bg border-2 rounded-2xl overflow-hidden transition-all flex flex-col ${p.featured ? "c-accent-border c-accent-glow" : "c-border-line-strong"}`}
       style={{ clipPath: "polygon(0 0, 100% 0, 100% 92%, 92% 100%, 0 100%)" }}>
       <button onClick={() => go("product", { id: p.id })} className="relative h-32 flex items-center justify-center c-grad-surface text-5xl overflow-hidden">
         {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : p.emoji}
+        {bestseller && <Badge className="absolute top-2 left-2 bg-red-500 text-white border-0">🔥 الأكثر مبيعًا</Badge>}
         {p.discount ? <Badge className="absolute top-2 right-2 c-accent-bg c-accent-text-on border-0">خصم {p.discount}%</Badge> : null}
         {p.stock === 0 && <div className="absolute inset-0 c-bg75 flex items-center justify-center text-xs font-bold c-text">نفدت الكمية</div>}
       </button>
@@ -294,7 +308,7 @@ function ProductCard({ p, go, addToCart }) {
         <StarRating rating={p.rating} reviews={p.reviews} />
         <div className="flex items-end justify-between mt-1.5">
           <div className="flex items-baseline gap-1.5">
-            <span className="font-extrabold c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{p.price} ﷼</span>
+            <PriceTag bhd={p.price} className="font-extrabold c-accent" />
             {p.oldPrice && <span className="c-fs-11 c-text-dim2 line-through">{p.oldPrice} ﷼</span>}
           </div>
         </div>
@@ -310,7 +324,7 @@ function ProductCard({ p, go, addToCart }) {
 }
 
 /* ============================= Home Page ============================= */
-function HomePage({ products, categories, reviews, go, addToCart }) {
+function HomePage({ products, categories, reviews, go, addToCart, bestsellerIds }) {
   const featured = products.filter(p => p.featured);
   const offers = products.filter(p => p.oldPrice);
   const withDiscount = products.map(p => p.oldPrice ? { ...p, discount: Math.round((1 - p.price / p.oldPrice) * 100) } : p);
@@ -362,7 +376,7 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
           <button onClick={() => go("shop")} className="text-xs font-bold c-text-dim">عرض الكل ←</button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {featured.map(p => <ProductCard key={p.id} p={withDiscount.find(x=>x.id===p.id)} go={go} addToCart={addToCart} />)}
+          {featured.map(p => <ProductCard key={p.id} p={withDiscount.find(x=>x.id===p.id)} go={go} addToCart={addToCart} bestseller={bestsellerIds?.includes(p.id)} />)}
         </div>
       </section>
 
@@ -375,7 +389,7 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
             </h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {withDiscount.filter(p => p.oldPrice).map(p => <ProductCard key={p.id} p={p} go={go} addToCart={addToCart} />)}
+            {withDiscount.filter(p => p.oldPrice).map(p => <ProductCard key={p.id} p={p} go={go} addToCart={addToCart} bestseller={bestsellerIds?.includes(p.id)} />)}
           </div>
         </section>
       )}
@@ -422,7 +436,7 @@ function HomePage({ products, categories, reviews, go, addToCart }) {
     </div>
   );
 }
-function ShopPage({ products, categories, go, addToCart, initialFilters }) {
+function ShopPage({ products, categories, go, addToCart, initialFilters, bestsellerIds }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(initialFilters?.category || "all");
   const [map, setMap] = useState("الكل");
@@ -487,7 +501,7 @@ function ShopPage({ products, categories, go, addToCart, initialFilters }) {
         <div className="text-center py-20 c-text-dim2">ما فيه منتجات مطابقة لبحثك 🥔</div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {list.map(p => <ProductCard key={p.id} p={p.oldPrice ? { ...p, discount: Math.round((1 - p.price / p.oldPrice) * 100) } : p} go={go} addToCart={addToCart} />)}
+          {list.map(p => <ProductCard key={p.id} p={p.oldPrice ? { ...p, discount: Math.round((1 - p.price / p.oldPrice) * 100) } : p} go={go} addToCart={addToCart} bestseller={bestsellerIds?.includes(p.id)} />)}
         </div>
       )}
     </div>
@@ -495,13 +509,58 @@ function ShopPage({ products, categories, go, addToCart, initialFilters }) {
 }
 
 /* ============================= Product Page ============================= */
+function RelatedProducts({ products, current, go, addToCart }) {
+  const related = products.filter(p => p.id !== current.id && p.map === current.map).slice(0, 4);
+  if (related.length === 0) return null;
+  return (
+    <div className="max-w-5xl mx-auto px-4 pb-10">
+      <h2 className="font-extrabold text-lg mb-4" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>منتجات مشابهة</h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {related.map(p => <ProductCard key={p.id} p={p} go={go} addToCart={addToCart} />)}
+      </div>
+    </div>
+  );
+}
+
+function RecentlyViewed({ products, current, go, addToCart }) {
+  const [ids, setIds] = useState([]);
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("batata_recent") || "[]");
+      setIds(stored.filter(i => i !== current.id));
+      const updated = [current.id, ...stored.filter(i => i !== current.id)].slice(0, 8);
+      localStorage.setItem("batata_recent", JSON.stringify(updated));
+    } catch (_) {}
+  }, [current.id]);
+  const items = ids.map(id => products.find(p => p.id === id)).filter(Boolean).slice(0, 4);
+  if (items.length === 0) return null;
+  return (
+    <div className="max-w-5xl mx-auto px-4 pb-10">
+      <h2 className="font-extrabold text-lg mb-4" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>شاهدتها مؤخرًا</h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {items.map(p => <ProductCard key={p.id} p={p} go={go} addToCart={addToCart} />)}
+      </div>
+    </div>
+  );
+}
+
 function ProductPage({ products, id, go, addToCart }) {
   const p = products.find(x => x.id === id);
   const [qty, setQty] = useState(1);
+  const [liveStock, setLiveStock] = useState(null);
+
+  useEffect(() => {
+    if (!p) return;
+    supabase.from("account_stock_available_counts").select("available_count").eq("product_id", p.id).maybeSingle()
+      .then(({ data }) => setLiveStock(typeof data?.available_count === "number" ? data.available_count : null))
+      .catch(() => {});
+  }, [p?.id]);
+
   if (!p) return <div className="max-w-6xl mx-auto px-4 py-20 text-center c-text-dim2">المنتج غير موجود</div>;
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : null;
 
   return (
+    <>
     <div className="max-w-5xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8">
       <div className="h-64 md:h-full rounded-2xl c-grad-surface flex items-center justify-center text-8xl overflow-hidden">
         {p.image ? <img src={p.image} alt={p.name} className="w-full h-full object-cover" /> : p.emoji}
@@ -512,10 +571,13 @@ function ProductPage({ products, id, go, addToCart }) {
         <h1 className="font-extrabold text-2xl mb-2" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>{p.name}</h1>
         <StarRating rating={p.rating} reviews={p.reviews} />
         <div className="flex items-baseline gap-2 mt-4">
-          <span className="font-extrabold text-3xl c-text" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{p.price} ﷼</span>
+          <PriceTag bhd={p.price} className="font-extrabold text-3xl c-accent" />
           {p.oldPrice && <span className="text-sm c-text-dim2 line-through">{p.oldPrice} ﷼</span>}
-          {discount && <Badge className="c-soft-bg c-text c-border-soft">خصم {discount}%</Badge>}
+          {discount && <Badge className="c-accent-soft-bg c-accent border-0">خصم {discount}%</Badge>}
         </div>
+        {typeof liveStock === "number" && liveStock > 0 && liveStock <= 5 && (
+          <Badge className="bg-red-500/10 text-red-500 border-red-500/30 mt-3">🔥 متبقي {liveStock} فقط بالمخزون!</Badge>
+        )}
         <p className="c-text-dim leading-8 mt-4 text-sm">{p.description}</p>
         <div className="grid grid-cols-2 gap-3 mt-5 text-xs">
           <div className="c-surface border c-border-line rounded-xl p-3"><span className="c-text-dim2 block mb-1">التوفر</span><span className="font-bold">{p.stock > 0 ? `${p.stock} متوفر` : "غير متوفر"}</span></div>
@@ -536,6 +598,9 @@ function ProductPage({ products, id, go, addToCart }) {
         </div>
       </div>
     </div>
+    <RelatedProducts products={products} current={p} go={go} addToCart={addToCart} />
+    <RecentlyViewed products={products} current={p} go={go} addToCart={addToCart} />
+    </>
   );
 }
 
@@ -576,7 +641,7 @@ function CartPage({ cart, products, updateQty, removeFromCart, go }) {
       </div>
       <div className="flex items-center justify-between mt-6 c-surface border c-border-line rounded-xl p-4">
         <span className="font-bold c-text-dim">الإجمالي</span>
-        <span className="font-extrabold text-xl c-text">{total} ﷼</span>
+        <PriceTag bhd={total} className="font-extrabold text-xl c-text" />
       </div>
       <button onClick={() => go("checkout")} className="w-full mt-4 py-3.5 rounded-xl c-cta font-extrabold">إتمام الطلب</button>
     </div>
@@ -693,7 +758,7 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
       <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-2 text-sm">
         <div className="flex justify-between c-text-dim"><span>المجموع الفرعي</span><span>{subtotal} ﷼</span></div>
         {applied && <div className="flex justify-between c-text-dim"><span>الخصم</span><span>-{discountAmount} ﷼</span></div>}
-        <div className="flex justify-between font-extrabold text-lg pt-2 border-t c-border-line-strong"><span>الإجمالي</span><span className="c-text">{total} ﷼</span></div>
+        <div className="flex justify-between font-extrabold text-lg pt-2 border-t c-border-line-strong"><span>الإجمالي</span><PriceTag bhd={total} className="c-text" /></div>
       </div>
 
       <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
@@ -872,20 +937,23 @@ function OrdersPage({ orders, go, submitReview, user, deleteAccount, updateProfi
   if (orders.length === 0) return (
     <div className="max-w-3xl mx-auto px-4 py-24 text-center">
       {AccountSettings}
-      <div className="text-5xl mb-4">📦</div>
+      <span className="inline-flex w-16 h-16 rounded-full c-accent-soft-bg items-center justify-center text-3xl mb-4">📦</span>
       <p className="c-text-dim mb-6">ما عندك طلبات لسا</p>
-      <button onClick={() => go("shop")} className="px-6 py-3 rounded-xl c-bg-text c-text-bg font-extrabold">تصفح المتجر</button>
+      <button onClick={() => go("shop")} className="px-6 py-3 rounded-xl c-cta font-extrabold">تصفح المتجر</button>
     </div>
   );
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <h1 className="font-extrabold text-2xl mb-6" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>طلباتي</h1>
+      <div className="flex items-center gap-2.5 mb-6">
+        <span className="w-9 h-9 rounded-full c-accent-grad flex items-center justify-center text-base">📋</span>
+        <h1 className="font-extrabold text-2xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>طلباتي</h1>
+      </div>
       {AccountSettings}
       <div className="flex flex-col gap-3">
         {[...orders].reverse().map(o => (
-          <div key={o.id} className="c-surface border c-border-line rounded-xl p-4">
+          <div key={o.id} className={`c-surface border-2 rounded-xl p-4 ${o.status === "مكتمل" ? "c-accent-border" : "c-border-line"}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="font-extrabold text-sm">طلب #{o.id}</span>
+              <span className="font-extrabold text-sm" dir="ltr" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>#{o.id}</span>
               <Badge className={STATUS_STYLES[o.status]}>{o.status}</Badge>
             </div>
             <div className="text-xs c-text-dim2 mb-2">{new Date(o.date).toLocaleString("ar-SA")}</div>
@@ -893,7 +961,7 @@ function OrdersPage({ orders, go, submitReview, user, deleteAccount, updateProfi
               {o.items.map((i, idx) => <div key={idx} className="text-xs c-text-dim">{i.product.emoji} {i.product.name} × {i.qty}</div>)}
             </div>
             <div className="flex justify-between text-sm font-bold pt-2 border-t c-border-line-strong">
-              <span className="c-text-dim2">الإجمالي</span><span className="c-text">{o.total} ﷼</span>
+              <span className="c-text-dim2">الإجمالي</span><PriceTag bhd={o.total} className="c-accent" />
             </div>
 
             {(o.status === "قيد المراجعة" || o.status === "جاري التجهيز") && (
@@ -1527,6 +1595,25 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
     addToast("تم حذف المنتج");
     refreshProducts();
   }
+  function exportOrdersCSV() {
+    const header = ["رقم الطلب", "التاريخ", "الإيميل", "المنتجات", "الإجمالي", "الحالة"];
+    const rows = adminOrders.map(o => [
+      o.id,
+      new Date(o.date).toLocaleString("ar-SA"),
+      o.email || "",
+      o.items.map(i => `${i.product.name} x${i.qty}`).join(" | "),
+      o.total,
+      o.status,
+    ]);
+    const csv = "\uFEFF" + [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `batata-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   async function updateOrderStatus(id, status) {
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (error) { addToast("تعذّر تحديث الحالة", "error"); return; }
@@ -1709,10 +1796,15 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
       {tab === "support" && <SupportInbox addToast={addToast} />}
 
       {tab === "stats" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">إجمالي الطلبات</div><div className="font-extrabold text-3xl c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.count}</div></div>
           <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الإيرادات (طلبات مكتملة)</div><div className="font-extrabold text-3xl c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.revenue} ﷼</div></div>
           <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الأكثر مبيعاً</div><div className="font-extrabold text-sm mt-1.5">{stats.top}</div></div>
+        </div>
+        <button onClick={exportOrdersCSV} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg c-cta font-bold text-sm">
+          <Package size={15}/> تصدير تقرير الطلبات (CSV / Excel)
+        </button>
         </div>
       )}
 
@@ -1854,6 +1946,60 @@ function ChatWidget({ user, onOpenAuth }) {
 }
 
 /* ============================= Footer ============================= */
+function TrackOrderPage() {
+  const [orderId, setOrderId] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  async function search() {
+    if (!orderId.trim() || !email.trim()) { setError("أدخل رقم الطلب والإيميل"); return; }
+    setLoading(true); setError(""); setResult(null);
+    const { data, error: fnError } = await supabase.functions.invoke("track-order", { body: { orderId: orderId.trim(), email: email.trim() } });
+    setLoading(false);
+    if (fnError || data?.error) { setError(data?.error || "تعذّر البحث، حاول مجددًا"); return; }
+    setResult(data);
+  }
+
+  return (
+    <div className="max-w-xl mx-auto px-4 py-14">
+      <div className="text-center mb-8">
+        <span className="inline-flex w-14 h-14 rounded-full c-accent-soft-bg items-center justify-center text-2xl mb-3">🔍</span>
+        <h1 className="font-extrabold text-2xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>تتبع طلبك</h1>
+        <p className="c-text-dim2 text-sm mt-2">أدخل رقم الطلب والبريد الإلكتروني المستخدم عند الشراء</p>
+      </div>
+
+      <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-3">
+        <input value={orderId} onChange={e => setOrderId(e.target.value)} placeholder="رقم الطلب (مثال: 123456)" dir="ltr"
+          className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-accent-border" />
+        <input value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" dir="ltr"
+          className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none focus:c-accent-border" />
+        <button onClick={search} disabled={loading} className="py-3 rounded-lg c-cta font-extrabold text-sm disabled:opacity-50">
+          {loading ? "جاري البحث..." : "تتبع الطلب"}
+        </button>
+        {error && <p className="text-xs text-red-500">{error}</p>}
+      </div>
+
+      {result && (
+        <div className="c-surface border-2 c-accent-border rounded-xl p-4 mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-extrabold text-sm" dir="ltr" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>#{result.id}</span>
+            <Badge className={STATUS_STYLES[result.status]}>{result.status}</Badge>
+          </div>
+          <div className="text-xs c-text-dim2 mb-2">{new Date(result.date).toLocaleString("ar-SA")}</div>
+          <div className="flex flex-col gap-1 mb-2">
+            {(result.items || []).map((i, idx) => <div key={idx} className="text-xs c-text-dim">{i.product?.emoji} {i.product?.name} × {i.qty}</div>)}
+          </div>
+          <div className="flex justify-between text-sm font-bold pt-2 border-t c-border-line-strong">
+            <span className="c-text-dim2">الإجمالي</span><PriceTag bhd={result.total} className="c-accent" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Footer({ go, settings }) {
   return (
     <footer className="border-t c-border-line mt-10">
@@ -1868,6 +2014,7 @@ function Footer({ go, settings }) {
             <button onClick={() => go("home")} className="text-right c-text-dim">الرئيسية</button>
             <button onClick={() => go("shop")} className="text-right c-text-dim">المتجر</button>
             <button onClick={() => go("faq")} className="text-right c-text-dim">الأسئلة الشائعة</button>
+            <button onClick={() => go("track-order")} className="text-right c-text-dim">تتبع طلبي</button>
             <button onClick={() => go("contact")} className="text-right c-text-dim">تواصل معنا</button>
           </div>
         </div>
@@ -1905,6 +2052,8 @@ export default function BatataStore() {
   const [settings, setSettings] = useState({});
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]); // orders placed THIS session (guest-friendly, no account needed)
+  const [bestsellerIds, setBestsellerIds] = useState([]);
+  const [currency, setCurrency] = useState({ code: "BHD", rate: 1 });
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -1938,6 +2087,31 @@ export default function BatataStore() {
     const { data } = await supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(9);
     if (data) setReviews(data);
   }
+  async function computeBestsellers() {
+    try {
+      const { data } = await supabase.from("orders").select("items").eq("status", "مكتمل").limit(500);
+      if (!data) return;
+      const qtyByProduct = {};
+      data.forEach(o => (o.items || []).forEach(i => {
+        if (!i.productId) return;
+        qtyByProduct[i.productId] = (qtyByProduct[i.productId] || 0) + (i.qty || 1);
+      }));
+      const top = Object.entries(qtyByProduct).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
+      setBestsellerIds(top);
+    } catch (_) {}
+  }
+  async function detectCurrency() {
+    try {
+      const geoRes = await fetch("https://ipapi.co/json/");
+      const geo = await geoRes.json();
+      const code = geo?.currency;
+      if (!code || code === "BHD") return;
+      const rateRes = await fetch("https://open.er-api.com/v6/latest/BHD");
+      const rateData = await rateRes.json();
+      const rate = rateData?.rates?.[code];
+      if (rate) setCurrency({ code, rate });
+    } catch (_) {}
+  }
   async function refreshSettings() {
     const { data } = await supabase.from("site_settings").select("*");
     if (data) {
@@ -1968,6 +2142,8 @@ export default function BatataStore() {
       } catch {}
 
       await Promise.all([refreshProducts(), refreshCategories(), refreshReviews(), refreshSettings()]);
+      computeBestsellers();
+      detectCurrency();
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -2096,6 +2272,7 @@ export default function BatataStore() {
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
   return (
+    <CurrencyContext.Provider value={currency}>
     <div dir="rtl" className="min-h-screen c-bg c-text" style={{ fontFamily: "'Tajawal', sans-serif", ...THEMES[theme] }}>
       <style>{`
         @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
@@ -2171,14 +2348,15 @@ export default function BatataStore() {
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} login={login} signup={signup} />
 
       <main>
-        {page === "home" && <HomePage products={products} categories={categories} reviews={reviews} go={go} addToCart={addToCart} />}
-        {page === "shop" && <ShopPage products={products} categories={categories} go={go} addToCart={addToCart} initialFilters={params} />}
+        {page === "home" && <HomePage products={products} categories={categories} reviews={reviews} go={go} addToCart={addToCart} bestsellerIds={bestsellerIds} />}
+        {page === "shop" && <ShopPage products={products} categories={categories} go={go} addToCart={addToCart} initialFilters={params} bestsellerIds={bestsellerIds} />}
         {page === "product" && <ProductPage products={products} id={params.id} go={go} addToCart={addToCart} />}
         {page === "cart" && <CartPage cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} go={go} />}
         {page === "checkout" && <CheckoutPage cart={cart} products={products} placeOrder={placeOrder} go={go} user={user} />}
         {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} user={user} deleteAccount={deleteAccount} updateProfile={updateProfile} />}
         {page === "login" && <LoginPage login={login} signup={signup} go={go} />}
         {page === "faq" && <FaqPage />}
+        {page === "track-order" && <TrackOrderPage />}
         {page === "contact" && <ContactPage go={go} settings={settings} />}
         {page === "terms" && <TermsPage />}
         {page === "privacy" && <PrivacyPage />}
@@ -2191,5 +2369,6 @@ export default function BatataStore() {
       <ChatWidget user={user} onOpenAuth={() => setAuthModalOpen(true)} />
       <Footer go={go} settings={settings} />
     </div>
+    </CurrencyContext.Provider>
   );
 }
