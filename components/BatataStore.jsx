@@ -206,6 +206,50 @@ function StarRating({ rating, reviews }) {
 }
 
 /* ============================= Header ============================= */
+function AnnouncementBar({ settings }) {
+  const [hidden, setHidden] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const text = (settings?.announcement_text || "").trim();
+  const code = (settings?.announcement_code || "").trim();
+  if (!text || hidden) return null;
+  function copy() {
+    navigator.clipboard?.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <div className="c-accent-grad c-accent-text-on relative text-center text-xs font-extrabold px-9 py-2 flex items-center justify-center gap-2 flex-wrap">
+      <span>{text}</span>
+      {code && <button onClick={copy} className="px-2 py-0.5 rounded-md border border-current" dir="ltr">{copied ? "✓ تم النسخ" : code}</button>}
+      <button onClick={() => setHidden(true)} aria-label="إغلاق" className="absolute left-2 top-1/2 -translate-y-1/2 p-1"><X size={14} /></button>
+    </div>
+  );
+}
+
+function BottomNav({ page, go, cartCount, user, onOpenAuth }) {
+  if (page === "admin") return null;
+  const accountPage = user ? (user.isAdmin ? "admin" : "orders") : null;
+  const items = [
+    { id: "home", label: "الرئيسية", icon: HomeIcon, on: () => go("home") },
+    { id: "shop", label: "المتجر", icon: Store, on: () => go("shop") },
+    { id: "cart", label: "السلة", icon: ShoppingCart, on: () => go("cart"), badge: cartCount },
+    { id: accountPage || "login", label: user ? (user.isAdmin ? "الإدارة" : "طلباتي") : "دخول", icon: user ? Package : LogIn, on: () => (accountPage ? go(accountPage) : onOpenAuth()) },
+  ];
+  return (
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 c-bg90 backdrop-blur-md border-t c-border-line" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <div className="grid grid-cols-4">
+        {items.map(it => (
+          <button key={it.label} onClick={it.on} className={`relative flex flex-col items-center gap-1 py-2.5 c-fs-11 font-bold ${page === it.id ? "c-accent" : "c-text-dim"}`}>
+            <it.icon size={20} />
+            {it.label}
+            {it.badge > 0 && <span className="absolute top-1.5 right-1/2 translate-x-5 c-accent-bg c-accent-text-on c-fs-10 font-extrabold w-4 h-4 rounded-full flex items-center justify-center">{it.badge}</span>}
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onOpenAuth }) {
   const NAV = [
     { id: "home", label: "الرئيسية" },
@@ -240,7 +284,7 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onO
             className="p-2.5 rounded-xl c-fill hover:c-fill-strong transition-colors">
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <button onClick={() => go("cart")} className="relative p-2.5 rounded-xl c-fill hover:c-fill-strong transition-colors">
+          <button onClick={() => go("cart")} className="hidden md:block relative p-2.5 rounded-xl c-fill hover:c-fill-strong transition-colors">
             <ShoppingCart size={19} />
             {cartCount > 0 && (
               <span className="absolute -top-1 -left-1 c-accent-bg c-accent-text-on c-fs-10 font-extrabold w-5 h-5 rounded-full flex items-center justify-center">
@@ -252,10 +296,6 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onO
             className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl c-cta font-extrabold text-sm transition">
             {user ? (user.isAdmin ? <Settings size={16} /> : <Package size={16} />) : <LogIn size={16} />}
             {user ? (user.isAdmin ? "لوحة التحكم" : user.name) : "تسجيل الدخول"}
-          </button>
-          <button onClick={() => user ? go(user.isAdmin ? "admin" : "orders") : onOpenAuth()}
-            aria-label="الحساب" className="sm:hidden p-2.5 rounded-xl c-cta">
-            {user ? (user.isAdmin ? <Settings size={18} /> : <Package size={18} />) : <LogIn size={18} />}
           </button>
           <button className="md:hidden p-2.5 rounded-xl c-fill" onClick={onOpenMenu}><Menu size={19} /></button>
         </div>
@@ -576,8 +616,11 @@ function ProductPage({ products, id, go, addToCart }) {
           {p.oldPrice && <span className="text-sm c-text-dim2 line-through">{p.oldPrice} د.ب</span>}
           {discount && <Badge className="c-accent-soft-bg c-accent border-0">خصم {discount}%</Badge>}
         </div>
-        {typeof liveStock === "number" && liveStock > 0 && liveStock <= 5 && (
-          <Badge className="bg-red-500/10 text-red-500 border-red-500/30 mt-3">🔥 متبقي {liveStock} فقط بالمخزون!</Badge>
+        {typeof liveStock === "number" && liveStock > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Badge className="c-accent-soft-bg c-accent border-0">⚡ تسليم آلي فوري</Badge>
+            {liveStock <= 5 && <Badge className="bg-red-500/10 text-red-500 border-red-500/30">🔥 متبقي {liveStock} فقط بالمخزون!</Badge>}
+          </div>
         )}
         <p className="c-text-dim leading-8 mt-4 text-sm">{p.description}</p>
         <div className="grid grid-cols-2 gap-3 mt-5 text-xs">
@@ -586,6 +629,21 @@ function ProductPage({ products, id, go, addToCart }) {
         </div>
         <div className="c-surface border c-border-line rounded-xl p-3 mt-3 text-xs c-text-dim leading-6">
           ⚠️ معلومة مهمة: تأكد من صحة بريدك الإلكتروني قبل الشراء. التسليم يتم عبر البريد الإلكتروني فور الدفع.
+        </div>
+        <div className="c-surface border c-border-line rounded-xl p-4 mt-3">
+          <div className="font-extrabold text-sm mb-3">كيف تستلم منتجك؟</div>
+          <div className="flex flex-col gap-3">
+            {[
+              ["اطلب بإيميل صحيح", "أضف المنتج للسلة وأدخل بريدك الإلكتروني عند إتمام الطلب."],
+              ["ادفع عبر PayPal", "دفع آمن ببطاقة ائتمان/خصم أو رصيد PayPal."],
+              ["استلم حسابك", "تصلك بيانات الحساب على إيميلك، وتتابع طلبك من «تتبع الطلب» بالفوتر."],
+            ].map(([t, d], i) => (
+              <div key={i} className="flex gap-3 items-start">
+                <span className="shrink-0 w-6 h-6 rounded-full c-accent-bg c-accent-text-on text-xs font-extrabold flex items-center justify-center">{i + 1}</span>
+                <div><div className="font-bold text-xs">{t}</div><div className="c-fs-11 c-text-dim2 leading-5">{d}</div></div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-3 mt-6">
@@ -1443,7 +1501,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
 
-  const [linksForm, setLinksForm] = useState({ discord_url: "", whatsapp_url: "", instagram_url: "", tiktok_url: "" });
+  const [linksForm, setLinksForm] = useState({ discord_url: "", whatsapp_url: "", instagram_url: "", tiktok_url: "", announcement_text: "", announcement_code: "" });
   const [savingLinks, setSavingLinks] = useState(false);
   useEffect(() => { if (settings) setLinksForm(l => ({ ...l, ...settings })); }, [settings]);
 
@@ -1455,7 +1513,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
     }
     await refreshSettings?.();
     setSavingLinks(false);
-    addToast("تم حفظ روابط التواصل ✓");
+    addToast("تم الحفظ ✓");
   }
 
   async function loadOrders() {
@@ -1787,6 +1845,22 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
               {savingLinks ? "جاري الحفظ..." : "حفظ الروابط"}
             </button>
           </div>
+
+          <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-3">
+            <h3 className="font-extrabold text-sm">شريط الإعلان العلوي</h3>
+            <p className="c-fs-10-5 c-text-dim3 leading-5">يظهر أعلى الموقع. اتركه فاضيًا لإخفائه. الكود يُنسخ بضغطة من الزائر.</p>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">نص الإعلان</label>
+              <input value={linksForm.announcement_text} onChange={e => setLinksForm(f => ({ ...f, announcement_text: e.target.value }))} placeholder="خصم 10% على كل المنتجات، استخدم الكود" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-bold c-text-dim2 block mb-1.5">كود الخصم (اختياري)</label>
+              <input value={linksForm.announcement_code} onChange={e => setLinksForm(f => ({ ...f, announcement_code: e.target.value }))} placeholder="BATATA10" className="w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" dir="ltr" />
+            </div>
+            <button onClick={saveLinks} disabled={savingLinks} className="py-2.5 rounded-lg c-cta font-extrabold text-sm disabled:opacity-50">
+              {savingLinks ? "جاري الحفظ..." : "حفظ الإعلان"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -1847,7 +1921,7 @@ function ChatWidget({ user, onOpenAuth }) {
   }
 
   return (
-    <div className="fixed bottom-5 left-5 z-50" style={{ direction: "rtl" }}>
+    <div className="fixed bottom-20 md:bottom-5 left-5 z-50" style={{ direction: "rtl" }}>
       {open && user && (
         <div className="c-surface border c-border-line-strong rounded-2xl shadow-2xl w-[calc(100vw-2.5rem)] max-w-[320px] flex flex-col mb-3 overflow-hidden" style={{ height: 420 }}>
           <div className="c-bg-text c-text-bg px-4 py-3 flex items-center justify-between">
@@ -2266,6 +2340,7 @@ export default function BatataStore() {
       `}</style>
 
       <Toasts toasts={toasts} />
+      <AnnouncementBar settings={settings} />
       <Header page={page} go={go} cartCount={cartCount} user={user} onOpenMenu={() => setMenuOpen(true)} theme={theme} toggleTheme={toggleTheme} onOpenAuth={() => setAuthModalOpen(true)} />
       <MobileMenu open={menuOpen} close={() => setMenuOpen(false)} go={go} user={user} onOpenAuth={() => setAuthModalOpen(true)} />
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} login={login} signup={signup} />
@@ -2291,6 +2366,8 @@ export default function BatataStore() {
 
       <ChatWidget user={user} onOpenAuth={() => setAuthModalOpen(true)} />
       <Footer go={go} settings={settings} />
+      <div className="h-16 md:hidden" />
+      <BottomNav page={page} go={go} cartCount={cartCount} user={user} onOpenAuth={() => setAuthModalOpen(true)} />
     </div>
     </CurrencyContext.Provider>
   );
