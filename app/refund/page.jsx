@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL } from "../../lib/site";
+
 export const metadata = { title: "سياسة الاسترجاع | متجر بطاطا" };
 
 export default function RefundPage() {
@@ -15,7 +17,7 @@ export default function RefundPage() {
             <li>تسليم منتج مختلف عمّا تم طلبه</li>
             <li>مشكلة تقنية أدت لعدم استلام بيانات الحساب</li>
           </ul>
-          <p><b style={{ color: "#fff" }}>3. آلية الاسترجاع:</b> تواصل معنا خلال 48 ساعة من الطلب على 2aymanm.asd@gmail.com مع ذكر رقم الطلب، وسنراجع الحالة ونرد خلال 3 أيام عمل.</p>
+          <p><b style={{ color: "#fff" }}>3. آلية الاسترجاع:</b> تواصل معنا خلال 48 ساعة من الطلب على {SUPPORT_EMAIL} مع ذكر رقم الطلب، وسنراجع الحالة ونرد خلال 3 أيام عمل.</p>
           <p><b style={{ color: "#fff" }}>4. طريقة الاسترجاع:</b> يتم الاسترجاع بنفس وسيلة الدفع الأصلية خلال مدة تعتمد على بوابة الدفع المستخدمة.</p>
         </div>
       </div>

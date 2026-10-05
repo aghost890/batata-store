@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORT_EMAIL } from "../lib/site";
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -81,7 +82,7 @@ function PriceTag({ bhd, className = "" }) {
   const converted = code && code !== "BHD" && rate ? (Number(bhd) * rate).toFixed(2) : null;
   return (
     <span className={className}>
-      {bhd} ﷼
+      {bhd} د.ب
       {converted && <span className="c-fs-10-5 c-text-dim3 font-normal"> (≈ {converted} {code})</span>}
     </span>
   );
@@ -309,7 +310,7 @@ function ProductCard({ p, go, addToCart, bestseller }) {
         <div className="flex items-end justify-between mt-1.5">
           <div className="flex items-baseline gap-1.5">
             <PriceTag bhd={p.price} className="font-extrabold c-accent" />
-            {p.oldPrice && <span className="c-fs-11 c-text-dim2 line-through">{p.oldPrice} ﷼</span>}
+            {p.oldPrice && <span className="c-fs-11 c-text-dim2 line-through">{p.oldPrice} د.ب</span>}
           </div>
         </div>
         <div className="flex gap-1.5 mt-2">
@@ -492,7 +493,7 @@ function ShopPage({ products, categories, go, addToCart, initialFilters, bestsel
           </select>
         </div>
         <div className="col-span-2">
-          <label className="c-fs-11 font-bold c-text-dim2 block mb-1.5">الحد الأعلى للسعر: {maxPrice} ﷼</label>
+          <label className="c-fs-11 font-bold c-text-dim2 block mb-1.5">الحد الأعلى للسعر: {maxPrice} د.ب</label>
           <input type="range" min="5" max="200" value={maxPrice} onChange={e => setMaxPrice(+e.target.value)} className="w-full c-accent-text" />
         </div>
       </div>
@@ -572,7 +573,7 @@ function ProductPage({ products, id, go, addToCart }) {
         <StarRating rating={p.rating} reviews={p.reviews} />
         <div className="flex items-baseline gap-2 mt-4">
           <PriceTag bhd={p.price} className="font-extrabold text-3xl c-accent" />
-          {p.oldPrice && <span className="text-sm c-text-dim2 line-through">{p.oldPrice} ﷼</span>}
+          {p.oldPrice && <span className="text-sm c-text-dim2 line-through">{p.oldPrice} د.ب</span>}
           {discount && <Badge className="c-accent-soft-bg c-accent border-0">خصم {discount}%</Badge>}
         </div>
         {typeof liveStock === "number" && liveStock > 0 && liveStock <= 5 && (
@@ -628,7 +629,7 @@ function CartPage({ cart, products, updateQty, removeFromCart, go }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-sm truncate">{i.product.name}</div>
-              <div className="c-text font-extrabold text-sm">{i.product.price} ﷼</div>
+              <div className="c-text font-extrabold text-sm">{i.product.price} د.ب</div>
             </div>
             <div className="flex items-center gap-2 c-bg border c-border-line-strong rounded-lg px-2 py-1">
               <button onClick={() => updateQty(i.productId, i.qty - 1)}><Minus size={13}/></button>
@@ -722,7 +723,7 @@ function CheckoutPage({ cart, products, go, user }) {
         {items.map(i => (
           <div key={i.productId} className="flex justify-between text-sm c-surface border c-border-line rounded-lg px-4 py-3">
             <span>{i.product.name} × {i.qty}</span>
-            <span className="font-bold">{i.product.price * i.qty} ﷼</span>
+            <span className="font-bold">{i.product.price * i.qty} د.ب</span>
           </div>
         ))}
       </div>
@@ -734,8 +735,8 @@ function CheckoutPage({ cart, products, go, user }) {
       {applied && <div className="text-xs c-text-dim mb-3">تم تطبيق كوبون {applied.code} (خصم 10%) ✓</div>}
 
       <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-2 text-sm">
-        <div className="flex justify-between c-text-dim"><span>المجموع الفرعي</span><span>{subtotal} ﷼</span></div>
-        {applied && <div className="flex justify-between c-text-dim"><span>الخصم</span><span>-{discountAmount} ﷼</span></div>}
+        <div className="flex justify-between c-text-dim"><span>المجموع الفرعي</span><span>{subtotal} د.ب</span></div>
+        {applied && <div className="flex justify-between c-text-dim"><span>الخصم</span><span>-{discountAmount} د.ب</span></div>}
         <div className="flex justify-between font-extrabold text-lg pt-2 border-t c-border-line-strong"><span>الإجمالي</span><PriceTag bhd={total} className="c-text" /></div>
       </div>
 
@@ -745,7 +746,7 @@ function CheckoutPage({ cart, products, go, user }) {
           <p className="c-fs-11 c-text-dim2">أدخل بريدك الإلكتروني بالأعلى أولًا لتفعيل الدفع.</p>
         ) : (
           <>
-            <p className="c-fs-11 c-text-dim2 mb-3">الدفع فوري وآمن عبر PayPal (بطاقة ائتمان/خصم أو رصيد PayPal). المبلغ يُحوَّل تلقائيًا لما يعادل <b dir="ltr">{total} ﷼</b> بالدولار الأمريكي.</p>
+            <p className="c-fs-11 c-text-dim2 mb-3">الدفع فوري وآمن عبر PayPal (بطاقة ائتمان/خصم أو رصيد PayPal). المبلغ يُحوَّل تلقائيًا لما يعادل <b dir="ltr">{total} د.ب</b> بالدولار الأمريكي.</p>
             {paypalError && <div className="text-xs text-red-500 mb-2">{paypalError}</div>}
             {!paypalReady && <div className="c-fs-11 c-text-dim3">جاري تحميل بوابة الدفع…</div>}
             <div ref={paypalContainerRef} />
@@ -1016,6 +1017,10 @@ function FaqPage() {
     { q: "كم مدة التسليم؟", a: "تختلف حسب المنتج، غالباً بين 5 إلى 30 دقيقة، موضحة في صفحة كل منتج." },
     { q: "هل فيه ضمان استرجاع؟", a: "نعم، حسب سياسة الاسترجاع الموضحة في الفوتر." },
     { q: "كيف أتواصل مع الدعم؟", a: "عبر صفحة تواصل معنا أو قنوات التواصل الاجتماعي بالفوتر." },
+    { q: "ما طرق الدفع المتاحة؟", a: "الدفع عبر PayPal، سواء ببطاقة ائتمان/خصم أو برصيد PayPal. الأسعار بالدينار البحريني ويتحوّل المبلغ تلقائيًا للدولار وقت الدفع." },
+    { q: "كيف أستلم حسابي؟", a: "بعد الدفع تصلك بيانات الحساب (اسم المستخدم وكلمة المرور) على الإيميل اللي كتبته عند الطلب، وتقدر تتابع طلبك من «تتبع الطلب» في الفوتر." },
+    { q: "ما وصلني الحساب، وش أسوي؟", a: "تأكد من مجلد الرسائل غير المرغوبة (Spam)، وإذا ما لقيته تواصل معنا وأرسل رقم طلبك وبنساعدك." },
+    { q: "هل لازم أسجّل حساب بالموقع؟", a: "لا، تقدر تشتري وتتابع طلبك بالإيميل ورقم الطلب بدون تسجيل." },
   ];
   const [open, setOpen] = useState(null);
   return (
@@ -1041,15 +1046,15 @@ function ContactPage({ go, settings }) {
       <h1 className="font-extrabold text-2xl mb-3" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>تواصل معنا</h1>
       <p className="c-text-dim text-sm mb-8">فريق الدعم جاهز يساعدك بأي استفسار</p>
       <div className="flex flex-col gap-3">
-        <a href="mailto:2aymanm.asd@gmail.com" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5">
-          <span className="c-text">✉️</span> 2aymanm.asd@gmail.com
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5">
+          <span className="c-text">✉️</span> {SUPPORT_EMAIL}
         </a>
         {settings?.whatsapp_url && (
           <a href={settings.whatsapp_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><Phone size={18} className="c-text-dim"/> واتساب</a>
         )}
-        <a href={settings?.discord_url || "#"} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><MessageCircle size={18} className="c-text-dim"/> Discord</a>
-        <a href={settings?.instagram_url || "#"} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><Instagram size={18} className="c-text"/> Instagram</a>
-        <a href={settings?.tiktok_url || "#"} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><TrendingUp size={18} className="c-text"/> TikTok</a>
+        {settings?.discord_url && <a href={settings.discord_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><MessageCircle size={18} className="c-text-dim"/> Discord</a>}
+        {settings?.instagram_url && <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><Instagram size={18} className="c-text"/> Instagram</a>}
+        {settings?.tiktok_url && <a href={settings.tiktok_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 c-surface border c-border-line rounded-xl px-4 py-3.5"><TrendingUp size={18} className="c-text"/> TikTok</a>}
       </div>
       <p className="c-fs-11 c-text-dim3 mt-6 leading-6">راجع كمان <button onClick={() => go("terms")} className="underline">شروط الاستخدام</button>، <button onClick={() => go("privacy")} className="underline">سياسة الخصوصية</button>، و<button onClick={() => go("refund")} className="underline">سياسة الاسترجاع</button>.</p>
     </div>
@@ -1072,7 +1077,7 @@ function TermsPage() {
       <p><b className="c-text">1. طبيعة المتجر:</b> متجر بطاطا منصة مستقلة لبيع حسابات جاهزة، وغير تابع لأي جهة أو شركة خارجية.</p>
       <p><b className="c-text">2. المنتجات:</b> نبيع حسابات جاهزة فقط. التسليم يتم إلكترونيًا عبر البريد الإلكتروني بعد إتمام الدفع.</p>
       <p><b className="c-text">3. مسؤولية المستخدم:</b> يجب أن تكون بياناتك (بريدك الإلكتروني) صحيحة عند الطلب، ونحن غير مسؤولين عن أي خطأ ناتج عن بيانات غير صحيحة أدخلها المستخدم.</p>
-      <p><b className="c-text">4. الأسعار:</b> جميع الأسعار معروضة بالريال السعودي وقابلة للتغيير دون إشعار مسبق.</p>
+      <p><b className="c-text">4. الأسعار:</b> جميع الأسعار معروضة بالدينار البحريني وقابلة للتغيير دون إشعار مسبق.</p>
       <p><b className="c-text">5. الاستخدام المقبول:</b> يُمنع استخدام الموقع لأي غرض غير قانوني أو محاولة الإضرار به.</p>
       <p>لأي استفسار حول هذه الشروط، تواصل معنا عبر صفحة "تواصل معنا".</p>
     </LegalPage>
@@ -1586,7 +1591,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
         </div>
         <div className="c-surface border c-border-line rounded-xl px-3.5 py-3">
           <div className="c-fs-10-5 c-text-dim3 mb-0.5">الإيرادات المكتملة</div>
-          <div className="font-extrabold text-lg c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.revenue} ﷼</div>
+          <div className="font-extrabold text-lg c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.revenue} د.ب</div>
         </div>
         <div className="c-surface border c-border-line rounded-xl px-3.5 py-3 overflow-hidden">
           <div className="c-fs-10-5 c-text-dim3 mb-0.5">الأكثر مبيعًا</div>
@@ -1642,7 +1647,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-sm truncate">{p.name}</div>
-                  <div className="text-xs c-text-dim2">{p.map} · مخزون {p.stock} · {p.price} ﷼</div>
+                  <div className="text-xs c-text-dim2">{p.map} · مخزون {p.stock} · {p.price} د.ب</div>
                 </div>
                 <button onClick={() => startEdit(p)} className="p-2 rounded-lg c-fill"><Edit3 size={15}/></button>
                 <button onClick={() => deleteProduct(p.id)} className="p-2 rounded-lg c-soft-bg c-text-dim2 hover:c-text"><Trash2 size={15}/></button>
@@ -1700,7 +1705,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
             <div key={o.id} className="c-surface border c-border-line rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-extrabold text-sm">طلب #{o.id}{o.gameId ? " — " + o.gameId : ""}</span>
-                <span className="font-extrabold c-text text-sm">{o.total} ﷼</span>
+                <span className="font-extrabold c-text text-sm">{o.total} د.ب</span>
               </div>
               {o.email && (
                 <>
@@ -1730,7 +1735,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
         <div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">إجمالي الطلبات</div><div className="font-extrabold text-3xl c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.count}</div></div>
-          <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الإيرادات (طلبات مكتملة)</div><div className="font-extrabold text-3xl c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.revenue} ﷼</div></div>
+          <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الإيرادات (طلبات مكتملة)</div><div className="font-extrabold text-3xl c-accent" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{stats.revenue} د.ب</div></div>
           <div className="c-surface border c-accent-border rounded-xl p-5"><div className="text-xs c-text-dim2 mb-1">الأكثر مبيعاً</div><div className="font-extrabold text-sm mt-1.5">{stats.top}</div></div>
         </div>
         <button onClick={exportOrdersCSV} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg c-cta font-bold text-sm">
@@ -1960,9 +1965,9 @@ function Footer({ go, settings }) {
         <div>
           <div className="font-bold mb-3 text-xs c-text-dim2">تابعنا</div>
           <div className="flex gap-2">
-            <a href={settings?.discord_url || "#"} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><MessageCircle size={15}/></a>
-            <a href={settings?.instagram_url || "#"} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><Instagram size={15}/></a>
-            <a href={settings?.tiktok_url || "#"} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><TrendingUp size={15}/></a>
+            {settings?.discord_url && <a href={settings.discord_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><MessageCircle size={15}/></a>}
+            {settings?.instagram_url && <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><Instagram size={15}/></a>}
+            {settings?.tiktok_url && <a href={settings.tiktok_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><TrendingUp size={15}/></a>}
           </div>
         </div>
       </div>

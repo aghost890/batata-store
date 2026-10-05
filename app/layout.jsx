@@ -1,8 +1,16 @@
 import "./globals.css";
+import { SITE_URL } from "../lib/site";
+
+const TITLE = "متجر بطاطا | Batata Store";
+const DESC = "متجر بطاطا 🥔 – حسابات جاهزة بمستويات مختلفة، مبتدئين، مميزة، VIP ونخبة. تسليم سريع ودفع آمن عبر PayPal.";
 
 export const metadata = {
-  title: "متجر بطاطا | Batata Store",
-  description: "متجر بطاطا 🥔 – حسابات جاهزة بمستويات مختلفة، مبتدئين، مميزة، VIP ونخبة",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESC,
+  alternates: { canonical: "/" },
+  openGraph: { title: TITLE, description: DESC, url: SITE_URL, siteName: "متجر بطاطا", locale: "ar_AR", type: "website" },
+  twitter: { card: "summary", title: TITLE, description: DESC },
 };
 
 export default function RootLayout({ children }) {

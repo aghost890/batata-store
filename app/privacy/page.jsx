@@ -1,3 +1,5 @@
+import { SUPPORT_EMAIL } from "../../lib/site";
+
 export const metadata = { title: "سياسة الخصوصية | متجر بطاطا" };
 
 export default function PrivacyPage() {
@@ -12,7 +14,7 @@ export default function PrivacyPage() {
           <p><b style={{ color: "#fff" }}>كيف نستخدم بياناتك:</b> نستخدمها فقط لتنفيذ طلبك وإرسال بيانات المنتج (مثل بيانات حساب) وتقديم الدعم الفني.</p>
           <p><b style={{ color: "#fff" }}>مشاركة البيانات:</b> لا نبيع أو نشارك بياناتك مع أي طرف ثالث لأغراض تسويقية. قد نشارك بيانات الدفع الضرورية فقط مع بوابة الدفع المستخدمة لإتمام العملية.</p>
           <p><b style={{ color: "#fff" }}>حماية البيانات:</b> بياناتك مخزّنة على خوادم آمنة (Supabase) مع سياسات وصول محدودة.</p>
-          <p>لأي استفسار حول بياناتك، تواصل معنا على 2aymanm.asd@gmail.com</p>
+          <p>لأي استفسار حول بياناتك، تواصل معنا على {SUPPORT_EMAIL}</p>
         </div>
       </div>
     </div>
