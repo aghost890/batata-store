@@ -649,38 +649,15 @@ function CartPage({ cart, products, updateQty, removeFromCart, go }) {
 }
 
 /* ============================= Checkout Page ============================= */
-const PAYMENT_INFO = {
-  bank: { name: "بنك البحرين والكويت (BBK)", holder: "AYMAN MOHSEN AHMED MOHAMED", iban: "BH72BBKU00200008541853" },
-  benefitPay: "32020619",
-};
 const PAYPAL_CLIENT_ID = "BAAiwk8rJSwByVDP-P3zz9WhMreu_L8m7eflo6cT171TOwaKX6uBYt5_p5yYUzvJaXv3_GseZDG09ynU9s";
 
-function CopyField({ label, value }) {
-  const [copied, setCopied] = useState(false);
-  function copy() {
-    navigator.clipboard?.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-  return (
-    <div className="flex items-center justify-between gap-2 c-bg border c-border-line-strong rounded-lg px-3 py-2">
-      <div className="min-w-0">
-        <div className="c-fs-10-5 c-text-dim3">{label}</div>
-        <div className="text-sm font-bold truncate" dir="ltr">{value}</div>
-      </div>
-      <button onClick={copy} type="button" className="shrink-0 c-fs-11 font-bold c-fill px-2.5 py-1.5 rounded-md">{copied ? "✓ تم النسخ" : "نسخ"}</button>
-    </div>
-  );
-}
-
-function CheckoutPage({ cart, products, placeOrder, go, user }) {
+function CheckoutPage({ cart, products, go, user }) {
   const items = cart.map(c => ({ ...c, product: products.find(p => p.id === c.productId) })).filter(c => c.product);
   const subtotal = items.reduce((s, i) => s + i.product.price * i.qty, 0);
   const [coupon, setCoupon] = useState("");
   const [applied, setApplied] = useState(null);
   const [email, setEmail] = useState("");
   const [orderCode] = useState(() => String(Date.now()).slice(-6));
-  const [payMethod, setPayMethod] = useState("manual"); // "manual" | "paypal"
   const [paypalReady, setPaypalReady] = useState(false);
   const [paypalError, setPaypalError] = useState("");
   const paypalContainerRef = useRef(null);
@@ -688,20 +665,21 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
   const total = Math.max(0, subtotal - discountAmount);
 
   const emailValid = /\S+@\S+\.\S+/.test(email);
-  const canSubmit = emailValid;
+  const emailRef = useRef("");
+  emailRef.current = email;
 
   useEffect(() => {
-    if (payMethod !== "paypal" || !emailValid) return;
+    if (!emailValid) return;
     if (window.paypal) { setPaypalReady(true); return; }
     const script = document.createElement("script");
     script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD`;
     script.onload = () => setPaypalReady(true);
-    script.onerror = () => setPaypalError("تعذّر تحميل بوابة PayPal، حاول لاحقًا أو استخدم الدفع اليدوي.");
+    script.onerror = () => setPaypalError("تعذّر تحميل بوابة PayPal، حاول لاحقًا.");
     document.body.appendChild(script);
-  }, [payMethod, emailValid]);
+  }, [emailValid]);
 
   useEffect(() => {
-    if (!paypalReady || payMethod !== "paypal" || !window.paypal || !paypalContainerRef.current) return;
+    if (!paypalReady || !emailValid || !window.paypal || !paypalContainerRef.current) return;
     paypalContainerRef.current.innerHTML = "";
     window.paypal.Buttons({
       createOrder: async () => {
@@ -711,7 +689,7 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
       },
       onApprove: async (data) => {
         const { data: res, error } = await supabase.functions.invoke("paypal-capture-order", {
-          body: { orderID: data.orderID, items, totalBHD: total, email: email.trim(), orderCode },
+          body: { orderID: data.orderID, items, totalBHD: total, email: emailRef.current.trim(), orderCode },
         });
         if (error || !res?.success) { setPaypalError("تم الدفع لكن حدث خطأ بتسجيل الطلب، تواصل معنا بإرفاق رقم العملية."); return; }
         setPaypalError("");
@@ -721,7 +699,7 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
       },
       onError: () => setPaypalError("حدث خطأ أثناء الدفع عبر PayPal، حاول مرة أخرى."),
     }).render(paypalContainerRef.current);
-  }, [paypalReady, payMethod]);
+  }, [paypalReady, emailValid, total]);
 
   if (items.length === 0) return <div className="max-w-3xl mx-auto px-4 py-24 text-center c-text-dim2">لا يوجد منتجات في السلة</div>;
 
@@ -762,65 +740,18 @@ function CheckoutPage({ cart, products, placeOrder, go, user }) {
       </div>
 
       <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
-        <h3 className="font-extrabold text-sm mb-3">💳 طريقة الدفع</h3>
-
-        <div className="flex gap-2 mb-4">
-          <button type="button" onClick={() => setPayMethod("manual")} className={`flex-1 py-2.5 rounded-lg text-sm font-bold border ${payMethod === "manual" ? "c-bg-text c-text-bg" : "c-border-line-strong"}`}>تحويل بنكي / BenefitPay</button>
-          <button type="button" onClick={() => setPayMethod("paypal")} className={`flex-1 py-2.5 rounded-lg text-sm font-bold border ${payMethod === "paypal" ? "c-bg-text c-text-bg" : "c-border-line-strong"}`}>PayPal (بطاقة)</button>
-        </div>
-
-        {payMethod === "manual" ? (
-          <>
-            <p className="c-fs-11 c-text-dim2 mb-3">حوّل المبلغ ({total} ﷼) عبر إحدى الوسيلتين، واكتب <b>رقم الطلب أدناه</b> في خانة الوصف/الملاحظات أثناء التحويل، ثم أكّد بالأسفل وأرسل الطلب. سيتم تأكيد طلبك يدويًا خلال ساعات من فريقنا فور مطابقة رقم الطلب بالتحويل.</p>
-
-            <div className="c-accent-soft-bg border c-accent-border rounded-lg px-3 py-2.5 mb-3 flex items-center justify-between gap-2">
-              <div>
-                <div className="c-fs-10-5 c-text-dim3">رقم الطلب — اكتبه في التحويل</div>
-                <div className="text-lg font-extrabold c-accent" dir="ltr" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{orderCode}</div>
-              </div>
-              <button type="button" onClick={() => { navigator.clipboard?.writeText(orderCode); }} className="shrink-0 c-fs-11 font-bold c-cta px-3 py-2 rounded-md">نسخ الرقم</button>
-            </div>
-
-            <div className="flex flex-col gap-2 mb-3">
-              <div className="c-fs-11 font-bold c-text-dim mb-1">تحويل بنكي</div>
-              <CopyField label="البنك" value={PAYMENT_INFO.bank.name} />
-              <CopyField label="اسم صاحب الحساب" value={PAYMENT_INFO.bank.holder} />
-              <CopyField label="رقم الآيبان (IBAN)" value={PAYMENT_INFO.bank.iban} />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="c-fs-11 font-bold c-text-dim mb-1">BenefitPay</div>
-              <CopyField label="رقم الهاتف" value={PAYMENT_INFO.benefitPay} />
-            </div>
-          </>
+        <h3 className="font-extrabold text-sm mb-3">💳 الدفع عبر PayPal</h3>
+        {!emailValid ? (
+          <p className="c-fs-11 c-text-dim2">أدخل بريدك الإلكتروني بالأعلى أولًا لتفعيل الدفع.</p>
         ) : (
-          <div>
-            {!emailValid ? (
-              <p className="c-fs-11 c-text-dim2">أدخل بريدك الإلكتروني بالأعلى أولًا لتفعيل الدفع عبر PayPal.</p>
-            ) : (
-              <>
-                <p className="c-fs-11 c-text-dim2 mb-3">الدفع فوري وآمن عبر PayPal (بطاقة ائتمان/خصم أو رصيد PayPal). المبلغ يُحوَّل تلقائيًا لما يعادل <b dir="ltr">{total} ﷼</b> بالدولار الأمريكي.</p>
-                {paypalError && <div className="text-xs text-red-500 mb-2">{paypalError}</div>}
-                {!paypalReady && <div className="c-fs-11 c-text-dim3">جاري تحميل بوابة الدفع…</div>}
-                <div ref={paypalContainerRef} />
-              </>
-            )}
-          </div>
+          <>
+            <p className="c-fs-11 c-text-dim2 mb-3">الدفع فوري وآمن عبر PayPal (بطاقة ائتمان/خصم أو رصيد PayPal). المبلغ يُحوَّل تلقائيًا لما يعادل <b dir="ltr">{total} ﷼</b> بالدولار الأمريكي.</p>
+            {paypalError && <div className="text-xs text-red-500 mb-2">{paypalError}</div>}
+            {!paypalReady && <div className="c-fs-11 c-text-dim3">جاري تحميل بوابة الدفع…</div>}
+            <div ref={paypalContainerRef} />
+          </>
         )}
       </div>
-
-      {payMethod === "manual" && (
-        <>
-          <p className="c-fs-11 c-text-dim2 mt-4">تذكير: تأكد أنك حوّلت مبلغ <b className="c-text">{total} ﷼</b> وكتبت رقم الطلب <b dir="ltr">{orderCode}</b> في خانة الوصف/الملاحظات قبل إرسال الطلب.</p>
-
-          <button
-            onClick={() => { if (!canSubmit) return; placeOrder(items, total, null, email.trim() || null, "بانتظار تأكيد التحويل", orderCode); }}
-            disabled={!canSubmit}
-            className="w-full mt-3 py-3.5 rounded-xl c-cta font-extrabold disabled:opacity-40">
-            إرسال الطلب
-          </button>
-        </>
-      )}
     </div>
   );
 }
@@ -1353,7 +1284,7 @@ function StockManager({ products, addToast }) {
 
   return (
     <div>
-      <p className="c-fs-11 c-text-dim2 mb-4">أضف حسابات جاهزة لكل منتج، تُسلَّم تلقائيًا للعميل فور تأكيد الدفع (PayPal تلقائيًا، أو التحويل اليدوي لما تحدّث حالة الطلب لـ"جاري التجهيز").</p>
+      <p className="c-fs-11 c-text-dim2 mb-4">أضف حسابات جاهزة لكل منتج، تُسلَّم تلقائيًا للعميل فور تأكيد الدفع عبر PayPal.</p>
 
       <div className="grid md:grid-cols-2 gap-2 mb-5">
         {products.map(p => {
@@ -2248,19 +2179,6 @@ export default function BatataStore() {
     return true;
   }
 
-  async function placeOrder(items, total, gameId, email, paymentRef, presetId) {
-    const id = presetId || String(Date.now()).slice(-6);
-    const dbItems = items.map(i => ({ productId: i.productId, qty: i.qty, product: i.product }));
-    const { error } = await supabase.from("orders").insert({ id, items: dbItems, total, game_id: gameId, email, payment_ref: paymentRef, status: "قيد المراجعة" });
-    if (error) { addToast("تعذّر إرسال الطلب، حاول مرة ثانية", "error"); return; }
-    const order = { id, items, total, gameId, email, paymentRef, status: "قيد المراجعة", date: Date.now() };
-    setOrders(prev => [...prev, order]);
-    setCart([]);
-    addToast("تم إرسال طلبك بنجاح ✓ رقم الطلب #" + id);
-    go("orders");
-    supabase.functions.invoke("notify-new-order", { body: { orderId: id, email, total, items, paymentRef } }).catch(() => {});
-  }
-
   async function submitReview(orderId, customerName, rating, text) {
     const { error } = await supabase.from("reviews").insert({ order_id: orderId, customer_name: customerName, rating, text });
     if (error) { addToast("تعذّر إرسال المراجعة", "error"); return false; }
@@ -2352,7 +2270,7 @@ export default function BatataStore() {
         {page === "shop" && <ShopPage products={products} categories={categories} go={go} addToCart={addToCart} initialFilters={params} bestsellerIds={bestsellerIds} />}
         {page === "product" && <ProductPage products={products} id={params.id} go={go} addToCart={addToCart} />}
         {page === "cart" && <CartPage cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} go={go} />}
-        {page === "checkout" && <CheckoutPage cart={cart} products={products} placeOrder={placeOrder} go={go} user={user} />}
+        {page === "checkout" && <CheckoutPage cart={cart} products={products} go={go} user={user} />}
         {page === "orders" && <OrdersPage orders={orders} go={go} submitReview={submitReview} user={user} deleteAccount={deleteAccount} updateProfile={updateProfile} />}
         {page === "login" && <LoginPage login={login} signup={signup} go={go} />}
         {page === "faq" && <FaqPage />}
