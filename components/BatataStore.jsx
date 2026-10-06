@@ -8,7 +8,8 @@ import {
   Package, Settings, ChevronLeft, ChevronRight, Home as HomeIcon,
   Store, Tag, HelpCircle, Phone, Instagram, MessageCircle, Clock,
   Shield, Zap, Headphones, TrendingUp, Sparkles, Edit3, Check, LayoutGrid,
-  Sun, Moon, Send
+  Sun, Moon, Send,
+  Ticket,
 } from "lucide-react";
 
 /* ============================= theme tokens ============================= */
@@ -76,6 +77,8 @@ const SEED_PRODUCTS = [
 ];
 
 const CurrencyContext = React.createContext({ code: "BHD", rate: 1 });
+const round3 = (n) => Math.round(n * 1000) / 1000;
+
 function useCurrency() { return React.useContext(CurrencyContext); }
 function PriceTag({ bhd, className = "" }) {
   const { code, rate } = useCurrency();
@@ -391,6 +394,30 @@ function HomePage({ products, categories, reviews, go, addToCart, bestsellerIds 
         </div>
       </section>
 
+      {/* TRUST */}
+      {(() => {
+        const rs = reviews || [];
+        const avg = rs.length ? (rs.reduce((t, r) => t + (Number(r.rating) || 0), 0) / rs.length).toFixed(1) : null;
+        const cells = [
+          ["⚡", "تسليم آلي", "بعد تأكيد الدفع"],
+          ["🔒", "دفع آمن", "عبر PayPal"],
+          avg ? ["⭐", avg + " / 5", rs.length + " تقييم"] : ["🛟", "دعم مباشر", "شات الموقع وDiscord"],
+        ];
+        return (
+          <section className="max-w-6xl mx-auto px-4 pt-2">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {cells.map(([ic, t, d]) => (
+                <div key={t} className="c-surface border c-border-line rounded-xl py-3 px-2">
+                  <div className="text-lg">{ic}</div>
+                  <div className="font-extrabold text-xs mt-1">{t}</div>
+                  <div className="c-fs-10-5 c-text-dim2">{d}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* CATEGORIES */}
       <section className="max-w-6xl mx-auto px-4 py-14">
         <h2 className="font-extrabold text-xl mb-8" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>الأقسام</h2>
@@ -589,6 +616,10 @@ function ProductPage({ products, id, go, addToCart }) {
   const p = products.find(x => x.id === id);
   const [qty, setQty] = useState(1);
   const [liveStock, setLiveStock] = useState(null);
+  const [alertEmail, setAlertEmail] = useState("");
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [alertDone, setAlertDone] = useState(false);
+  const [alertErr, setAlertErr] = useState("");
 
   useEffect(() => {
     if (!p) return;
@@ -599,6 +630,15 @@ function ProductPage({ products, id, go, addToCart }) {
 
   if (!p) return <div className="max-w-6xl mx-auto px-4 py-20 text-center c-text-dim2">المنتج غير موجود</div>;
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : null;
+  const soldOut = p.stock === 0 || liveStock === 0;
+
+  async function subscribeAlert() {
+    if (!/\S+@\S+\.\S+/.test(alertEmail)) { setAlertErr("اكتب إيميل صحيح."); return; }
+    setAlertBusy(true); setAlertErr("");
+    const { error } = await supabase.rpc("subscribe_stock_alert", { p_product_id: String(p.id), p_email: alertEmail.trim() });
+    setAlertBusy(false);
+    if (error) setAlertErr("تعذّر التسجيل، حاول لاحقًا."); else setAlertDone(true);
+  }
 
   return (
     <>
@@ -645,6 +685,24 @@ function ProductPage({ products, id, go, addToCart }) {
             ))}
           </div>
         </div>
+
+        {soldOut && (
+          <div className="c-surface border c-border-line rounded-xl p-4 mt-4">
+            <div className="font-extrabold text-sm mb-1">🔔 أعلمني عند التوفر</div>
+            {alertDone ? (
+              <div className="text-xs c-accent">تم تسجيل إيميلك ✓ بننبهك أول ما يرجع المنتج.</div>
+            ) : (
+              <>
+                <p className="c-fs-11 c-text-dim2 mb-3">اكتب إيميلك وننبهك أول ما يرجع المنتج.</p>
+                <div className="flex gap-2">
+                  <input value={alertEmail} onChange={e => setAlertEmail(e.target.value)} type="email" dir="ltr" placeholder="you@example.com" className="flex-1 c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm" />
+                  <button onClick={subscribeAlert} disabled={alertBusy} className="px-4 rounded-lg c-cta font-extrabold text-sm disabled:opacity-50">{alertBusy ? "..." : "اشترك"}</button>
+                </div>
+                {alertErr && <div className="text-xs text-red-500 mt-2">{alertErr}</div>}
+              </>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-3 mt-6">
           <div className="flex items-center gap-3 c-surface border c-border-line-strong rounded-xl px-3 py-2">
@@ -712,16 +770,17 @@ const PAYPAL_CLIENT_ID = "BAAiwk8rJSwByVDP-P3zz9WhMreu_L8m7eflo6cT171TOwaKX6uBYt
 
 function CheckoutPage({ cart, products, go, user }) {
   const items = cart.map(c => ({ ...c, product: products.find(p => p.id === c.productId) })).filter(c => c.product);
-  const subtotal = items.reduce((s, i) => s + i.product.price * i.qty, 0);
+  const subtotal = round3(items.reduce((s, i) => s + i.product.price * i.qty, 0));
   const [coupon, setCoupon] = useState("");
+  const [couponMsg, setCouponMsg] = useState("");
   const [applied, setApplied] = useState(null);
   const [email, setEmail] = useState("");
   const [orderCode] = useState(() => String(Date.now()).slice(-6));
   const [paypalReady, setPaypalReady] = useState(false);
   const [paypalError, setPaypalError] = useState("");
   const paypalContainerRef = useRef(null);
-  const discountAmount = applied ? Math.round(subtotal * applied.pct) : 0;
-  const total = Math.max(0, subtotal - discountAmount);
+  const discountAmount = applied ? round3(subtotal * applied.pct) : 0;
+  const total = Math.max(0, round3(subtotal - discountAmount));
 
   const emailValid = /\S+@\S+\.\S+/.test(email);
   const emailRef = useRef("");
@@ -742,13 +801,13 @@ function CheckoutPage({ cart, products, go, user }) {
     paypalContainerRef.current.innerHTML = "";
     window.paypal.Buttons({
       createOrder: async () => {
-        const { data, error } = await supabase.functions.invoke("paypal-create-order", { body: { amountBHD: total } });
+        const { data, error } = await supabase.functions.invoke("paypal-create-order", { body: { amountBHD: total, coupon: applied?.code || null } });
         if (error || !data?.id) { setPaypalError("تعذّر إنشاء طلب الدفع."); throw new Error("create order failed"); }
         return data.id;
       },
       onApprove: async (data) => {
         const { data: res, error } = await supabase.functions.invoke("paypal-capture-order", {
-          body: { orderID: data.orderID, items, totalBHD: total, email: emailRef.current.trim(), orderCode },
+          body: { orderID: data.orderID, items, totalBHD: total, coupon: applied?.code || null, email: emailRef.current.trim(), orderCode },
         });
         if (error || !res?.success) { setPaypalError("تم الدفع لكن حدث خطأ بتسجيل الطلب، تواصل معنا بإرفاق رقم العملية."); return; }
         setPaypalError("");
@@ -758,13 +817,17 @@ function CheckoutPage({ cart, products, go, user }) {
       },
       onError: () => setPaypalError("حدث خطأ أثناء الدفع عبر PayPal، حاول مرة أخرى."),
     }).render(paypalContainerRef.current);
-  }, [paypalReady, emailValid, total]);
+  }, [paypalReady, emailValid, total, applied?.code]);
 
   if (items.length === 0) return <div className="max-w-3xl mx-auto px-4 py-24 text-center c-text-dim2">لا يوجد منتجات في السلة</div>;
 
-  function applyCoupon() {
-    if (coupon.trim().toUpperCase() === "BATATA10") setApplied({ code: "BATATA10", pct: 0.1 });
-    else setApplied(null);
+  async function applyCoupon() {
+    const code = coupon.trim();
+    if (!code) { setApplied(null); setCouponMsg(""); return; }
+    const { data, error } = await supabase.rpc("validate_coupon", { p_code: code });
+    if (error || !data?.valid) { setApplied(null); setCouponMsg("الكوبون غير صالح أو منتهي."); return; }
+    setApplied({ code: data.code, pct: Number(data.percent) / 100 });
+    setCouponMsg("");
   }
 
   return (
@@ -790,7 +853,8 @@ function CheckoutPage({ cart, products, go, user }) {
         <input value={coupon} onChange={e => setCoupon(e.target.value)} placeholder="كوبون خصم" className="flex-1 c-surface border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none" />
         <button onClick={applyCoupon} className="px-4 rounded-lg c-fill font-bold text-sm">تطبيق</button>
       </div>
-      {applied && <div className="text-xs c-text-dim mb-3">تم تطبيق كوبون {applied.code} (خصم 10%) ✓</div>}
+      {applied && <div className="text-xs c-text-dim mb-3">تم تطبيق كوبون {applied.code} (خصم {Math.round(applied.pct * 100)}%) ✓</div>}
+      {couponMsg && <div className="text-xs text-red-500 mb-3">{couponMsg}</div>}
 
       <div className="c-surface border c-border-line rounded-xl p-4 flex flex-col gap-2 text-sm">
         <div className="flex justify-between c-text-dim"><span>المجموع الفرعي</span><span>{subtotal} د.ب</span></div>
@@ -1484,6 +1548,94 @@ function CustomersManager({ addToast }) {
   );
 }
 
+function CouponsManager({ addToast }) {
+  const [rows, setRows] = useState([]);
+  const [form, setForm] = useState({ code: "", percent: "10", max_uses: "", expires_at: "" });
+  async function load() {
+    const { data, error } = await supabase.from("coupons").select("*").order("created_at", { ascending: false });
+    if (error) addToast("تعذّر تحميل الكوبونات، تأكد من تشغيل ملف SQL", "error");
+    setRows(data || []);
+  }
+  useEffect(() => { load(); }, []);
+  async function add() {
+    const code = form.code.trim().toUpperCase();
+    const percent = Number(form.percent);
+    if (!/^[A-Z0-9_-]{3,20}$/.test(code)) return addToast("الكود: حروف إنجليزية وأرقام فقط (3 إلى 20)", "error");
+    if (!(percent > 0 && percent <= 100)) return addToast("النسبة بين 1 و100", "error");
+    const { error } = await supabase.from("coupons").insert({
+      code, percent,
+      max_uses: form.max_uses ? Number(form.max_uses) : null,
+      expires_at: form.expires_at ? new Date(form.expires_at + "T23:59:59").toISOString() : null,
+    });
+    if (error) return addToast(error.code === "23505" ? "الكود موجود مسبقًا" : "تعذّر الحفظ", "error");
+    setForm({ code: "", percent: "10", max_uses: "", expires_at: "" });
+    addToast("تمت إضافة الكوبون ✓");
+    load();
+  }
+  async function toggle(c) { await supabase.from("coupons").update({ active: !c.active }).eq("code", c.code); load(); }
+  async function remove(c) {
+    if (!window.confirm("حذف الكوبون " + c.code + "؟")) return;
+    await supabase.from("coupons").delete().eq("code", c.code);
+    load();
+  }
+  const inp = "w-full c-bg border c-border-line-strong rounded-lg px-3 py-2.5 text-sm";
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="c-surface border c-border-line rounded-xl p-4 grid grid-cols-2 gap-3">
+        <h3 className="font-extrabold text-sm col-span-2">إضافة كوبون</h3>
+        <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">الكود</label><input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="BATATA20" className={inp} dir="ltr" /></div>
+        <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">نسبة الخصم %</label><input value={form.percent} onChange={e => setForm(f => ({ ...f, percent: e.target.value }))} type="number" className={inp} dir="ltr" /></div>
+        <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">أقصى استخدام (اختياري)</label><input value={form.max_uses} onChange={e => setForm(f => ({ ...f, max_uses: e.target.value }))} type="number" className={inp} dir="ltr" /></div>
+        <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">ينتهي في (اختياري)</label><input value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))} type="date" className={inp} dir="ltr" /></div>
+        <button onClick={add} className="col-span-2 py-2.5 rounded-lg c-cta font-extrabold text-sm">إضافة</button>
+      </div>
+      <div className="flex flex-col gap-2">
+        {rows.length === 0 && <div className="text-center text-sm c-text-dim2 py-6">لا يوجد كوبونات</div>}
+        {rows.map(c => (
+          <div key={c.code} className="c-surface border c-border-line rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-extrabold text-sm" dir="ltr" style={{ fontFamily: "'Chakra Petch', sans-serif" }}>{c.code} · {Number(c.percent)}%</div>
+              <div className="c-fs-10-5 c-text-dim3">استُخدم {c.used_count}{c.max_uses ? " من " + c.max_uses : ""}{c.expires_at ? " · ينتهي " + new Date(c.expires_at).toLocaleDateString("ar") : ""}</div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => toggle(c)} className={"px-3 py-1.5 rounded-lg text-xs font-bold " + (c.active ? "c-accent-soft-bg c-accent" : "c-fill c-text-dim")}>{c.active ? "فعّال" : "موقوف"}</button>
+              <button onClick={() => remove(c)} className="px-3 py-1.5 rounded-lg c-fill text-xs font-bold text-red-500">حذف</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RestockAlerts({ products, addToast }) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    supabase.from("stock_alerts").select("product_id,email,notified_at").is("notified_at", null)
+      .then(({ data }) => setRows(data || [])).catch(() => {});
+  }, []);
+  const groups = {};
+  rows.forEach(r => { (groups[r.product_id] = groups[r.product_id] || []).push(r.email); });
+  const ids = Object.keys(groups);
+  if (ids.length === 0) return null;
+  return (
+    <div className="c-surface border c-border-line rounded-xl p-4 mt-6">
+      <h3 className="font-extrabold text-sm mb-3">🔔 بانتظار التوفر</h3>
+      <div className="flex flex-col gap-2">
+        {ids.map(id => {
+          const pr = products.find(x => String(x.id) === id);
+          return (
+            <div key={id} className="flex items-center justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate">{pr?.name || id} <span className="c-text-dim2">({groups[id].length})</span></span>
+              <button onClick={() => { navigator.clipboard?.writeText(groups[id].join(", ")); addToast("تم نسخ الإيميلات ✓"); }} className="px-3 py-1.5 rounded-lg c-fill text-xs font-bold shrink-0">نسخ الإيميلات</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AdminPage({ products, categories, refreshProducts, refreshCategories, addToast, logout, userEmail, settings, refreshSettings }) {
   const [tab, setTab] = useState("products");
   const [editing, setEditing] = useState(null);
@@ -1659,7 +1811,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
 
       <div className="flex gap-1.5 mb-6 flex-wrap border-b c-border-line pb-3">
         {[
-          ["products", "المنتجات", Package], ["categories", "الأقسام", LayoutGrid], ["stock", "المخزون", Store],
+          ["products", "المنتجات", Package], ["categories", "الأقسام", LayoutGrid], ["stock", "المخزون", Store], ["coupons", "الكوبونات", Ticket],
           ["orders", "الطلبات", ShoppingCart], ["customers", "العملاء", LogIn], ["support", "الدعم الفني", Headphones],
           ["stats", "الإحصائيات", TrendingUp], ["settings", "الإعدادات", Settings],
         ].map(([id, label, Icon]) => (
@@ -1751,9 +1903,10 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
         </div>
       )}
 
-      {tab === "stock" && <StockManager products={products} addToast={addToast} />}
+      {tab === "stock" && <><StockManager products={products} addToast={addToast} /><RestockAlerts products={products} addToast={addToast} /></>}
 
       {tab === "customers" && <CustomersManager addToast={addToast} />}
+      {tab === "coupons" && <CouponsManager addToast={addToast} />}
 
       {tab === "orders" && (
         <div className="flex flex-col gap-2">
