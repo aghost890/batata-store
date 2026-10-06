@@ -78,6 +78,18 @@ const SEED_PRODUCTS = [
 
 const CurrencyContext = React.createContext({ code: "BHD", rate: 1 });
 const round3 = (n) => Math.round(n * 1000) / 1000;
+const USD_PER_BHD = 2.65957;
+const CURRENCIES = ["BHD", "SAR", "AED", "KWD", "QAR", "OMR", "USD", "EUR", "EGP"];
+
+function CurrencyPicker({ currency, onChange, className = "" }) {
+  const opts = Array.from(new Set(["BHD", currency.code, ...CURRENCIES]));
+  return (
+    <select value={currency.code} onChange={e => onChange(e.target.value)} aria-label="العملة"
+      className={`c-fill rounded-xl px-2.5 py-2.5 text-xs font-bold outline-none ${className}`}>
+      {opts.map(c => <option key={c} value={c}>{c === "BHD" ? "BHD (د.ب)" : c}</option>)}
+    </select>
+  );
+}
 
 function useCurrency() { return React.useContext(CurrencyContext); }
 function PriceTag({ bhd, className = "" }) {
@@ -253,7 +265,7 @@ function BottomNav({ page, go, cartCount, user, onOpenAuth }) {
   );
 }
 
-function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onOpenAuth }) {
+function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onOpenAuth, currency, onCurrency }) {
   const NAV = [
     { id: "home", label: "الرئيسية" },
     { id: "shop", label: "المتجر" },
@@ -283,6 +295,7 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onO
         </nav>
 
         <div className="flex items-center gap-2">
+          <div className="hidden md:block"><CurrencyPicker currency={currency} onChange={onCurrency} /></div>
           <button onClick={toggleTheme} aria-label="تبديل الوضع الداكن/الفاتح"
             className="p-2.5 rounded-xl c-fill hover:c-fill-strong transition-colors">
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
@@ -307,7 +320,7 @@ function Header({ page, go, cartCount, user, onOpenMenu, theme, toggleTheme, onO
   );
 }
 
-function MobileMenu({ open, close, go, user, onOpenAuth }) {
+function MobileMenu({ open, close, go, user, onOpenAuth, currency, onCurrency }) {
   if (!open) return null;
   const NAV = [
     { id: "home", label: "الرئيسية", icon: HomeIcon },
@@ -330,6 +343,10 @@ function MobileMenu({ open, close, go, user, onOpenAuth }) {
             <n.icon size={18} className="c-text" /> {n.label}
           </button>
         ))}
+      </div>
+      <div className="flex items-center justify-between gap-3 mt-4 px-1">
+        <span className="text-sm font-bold c-text-dim">العملة المعروضة</span>
+        <CurrencyPicker currency={currency} onChange={onCurrency} />
       </div>
     </div>
   );
@@ -868,7 +885,7 @@ function CheckoutPage({ cart, products, go, user }) {
           <p className="c-fs-11 c-text-dim2">أدخل بريدك الإلكتروني بالأعلى أولًا لتفعيل الدفع.</p>
         ) : (
           <>
-            <p className="c-fs-11 c-text-dim2 mb-3">الدفع فوري وآمن عبر PayPal (بطاقة ائتمان/خصم أو رصيد PayPal). المبلغ يُحوَّل تلقائيًا لما يعادل <b dir="ltr">{total} د.ب</b> بالدولار الأمريكي.</p>
+            <p className="c-fs-11 c-text-dim2 mb-3">الدفع فوري وآمن عبر PayPal (بطاقة ائتمان/خصم أو رصيد PayPal). الأسعار المعروضة بعملتك تقريبية، والدفع يتم بالدولار: سيُخصم <b dir="ltr">{(Math.round(total * USD_PER_BHD * 100) / 100).toFixed(2)} USD</b> (ما يعادل {total} د.ب).</p>
             {paypalError && <div className="text-xs text-red-500 mb-2">{paypalError}</div>}
             {!paypalReady && <div className="c-fs-11 c-text-dim3">جاري تحميل بوابة الدفع…</div>}
             <div ref={paypalContainerRef} />
@@ -2217,6 +2234,7 @@ export default function BatataStore() {
   const [orders, setOrders] = useState([]); // orders placed THIS session (guest-friendly, no account needed)
   const [bestsellerIds, setBestsellerIds] = useState([]);
   const [currency, setCurrency] = useState({ code: "BHD", rate: 1 });
+  const [rates, setRates] = useState(null);
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -2263,16 +2281,29 @@ export default function BatataStore() {
       setBestsellerIds(top);
     } catch (_) {}
   }
+  function chooseCurrency(code) {
+    try { window.localStorage.setItem("batata:currency", code); } catch {}
+    if (code === "BHD") setCurrency({ code: "BHD", rate: 1 });
+    else if (rates?.[code]) setCurrency({ code, rate: rates[code] });
+  }
   async function detectCurrency() {
     try {
+      const rateRes = await fetch("https://open.er-api.com/v6/latest/BHD");
+      const rateData = await rateRes.json();
+      const r = rateData?.rates || {};
+      setRates(r);
+      let saved = null;
+      try { saved = window.localStorage.getItem("batata:currency"); } catch {}
+      if (saved) {
+        if (saved === "BHD") setCurrency({ code: "BHD", rate: 1 });
+        else if (r[saved]) setCurrency({ code: saved, rate: r[saved] });
+        return;
+      }
       const geoRes = await fetch("https://ipapi.co/json/");
       const geo = await geoRes.json();
       const code = geo?.currency;
       if (!code || code === "BHD") return;
-      const rateRes = await fetch("https://open.er-api.com/v6/latest/BHD");
-      const rateData = await rateRes.json();
-      const rate = rateData?.rates?.[code];
-      if (rate) setCurrency({ code, rate });
+      if (r[code]) setCurrency({ code, rate: r[code] });
     } catch (_) {}
   }
   async function refreshSettings() {
@@ -2494,8 +2525,8 @@ export default function BatataStore() {
 
       <Toasts toasts={toasts} />
       <AnnouncementBar settings={settings} />
-      <Header page={page} go={go} cartCount={cartCount} user={user} onOpenMenu={() => setMenuOpen(true)} theme={theme} toggleTheme={toggleTheme} onOpenAuth={() => setAuthModalOpen(true)} />
-      <MobileMenu open={menuOpen} close={() => setMenuOpen(false)} go={go} user={user} onOpenAuth={() => setAuthModalOpen(true)} />
+      <Header currency={currency} onCurrency={chooseCurrency} page={page} go={go} cartCount={cartCount} user={user} onOpenMenu={() => setMenuOpen(true)} theme={theme} toggleTheme={toggleTheme} onOpenAuth={() => setAuthModalOpen(true)} />
+      <MobileMenu currency={currency} onCurrency={chooseCurrency} open={menuOpen} close={() => setMenuOpen(false)} go={go} user={user} onOpenAuth={() => setAuthModalOpen(true)} />
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} login={login} signup={signup} />
 
       <main>
