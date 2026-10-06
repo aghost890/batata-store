@@ -1664,6 +1664,23 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
   const [catForm, setCatForm] = useState(emptyCatForm);
 
   const [adminOrders, setAdminOrders] = useState([]);
+  const [orderQ, setOrderQ] = useState("");
+  const [orderStatus, setOrderStatus] = useState("all");
+  const [lowStock, setLowStock] = useState([]);
+  useEffect(() => {
+    supabase.from("account_stock_available_counts").select("product_id,available_count")
+      .then(({ data }) => {
+        const low = (data || []).filter(r => Number(r.available_count) <= 3).map(r => ({
+          name: products.find(pr => String(pr.id) === String(r.product_id))?.name || String(r.product_id),
+          n: Number(r.available_count),
+        }));
+        setLowStock(low);
+      }).catch(() => {});
+  }, [products]);
+  const q = orderQ.trim().toLowerCase();
+  const shownOrders = adminOrders.filter(o =>
+    (orderStatus === "all" || o.status === orderStatus) &&
+    (!q || [o.id, o.email, o.paymentRef, ...(o.items || []).map(i => i.product?.name)].some(v => String(v || "").toLowerCase().includes(q))));
   const [ordersLoading, setOrdersLoading] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
@@ -1826,6 +1843,14 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
         </div>
       </div>
 
+      {lowStock.length > 0 && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-500 px-4 py-3 mb-4 text-xs leading-6">
+          <div className="font-extrabold mb-1">⚠️ مخزون قليل</div>
+          {lowStock.map(x => <div key={x.name}>{x.name}: {x.n === 0 ? "نفد" : "متبقي " + x.n}</div>)}
+          <button onClick={() => setTab("stock")} className="mt-2 underline font-bold">فتح المخزون</button>
+        </div>
+      )}
+
       <div className="flex gap-1.5 mb-6 flex-wrap border-b c-border-line pb-3">
         {[
           ["products", "المنتجات", Package], ["categories", "الأقسام", LayoutGrid], ["stock", "المخزون", Store], ["coupons", "الكوبونات", Ticket],
@@ -1927,9 +1952,18 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
 
       {tab === "orders" && (
         <div className="flex flex-col gap-2">
+          <input value={orderQ} onChange={e => setOrderQ(e.target.value)} placeholder="ابحث برقم الطلب أو الإيميل أو المنتج..." className="w-full c-surface border c-border-line-strong rounded-lg px-3 py-2.5 text-sm outline-none" />
+          <div className="flex flex-wrap gap-1.5 mb-1">
+            {["all", ...STATUS_LIST].map(st => (
+              <button key={st} onClick={() => setOrderStatus(st)} className={`c-fs-11 font-bold px-2.5 py-1.5 rounded-md border ${orderStatus === st ? "c-accent-soft-bg c-accent c-accent-border" : "c-fill c-border-line-strong c-text-dim2"}`}>
+                {st === "all" ? "الكل (" + adminOrders.length + ")" : st}
+              </button>
+            ))}
+          </div>
           {ordersLoading && <p className="c-text-dim2 text-sm">جاري التحميل...</p>}
           {!ordersLoading && adminOrders.length === 0 && <p className="c-text-dim2 text-sm">لا يوجد طلبات بعد.</p>}
-          {adminOrders.map(o => (
+          {!ordersLoading && adminOrders.length > 0 && shownOrders.length === 0 && <p className="c-text-dim2 text-sm">ما لقيت طلبات تطابق البحث.</p>}
+          {shownOrders.map(o => (
             <div key={o.id} className="c-surface border c-border-line rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-extrabold text-sm">طلب #{o.id}{o.gameId ? " — " + o.gameId : ""}</span>

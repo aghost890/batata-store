@@ -4,17 +4,17 @@ export const metadata = { title: "شروط الاستخدام | متجر بطا�
 
 export default function TermsPage() {
   return (
-    <div dir="rtl" style={{ background: "#000", color: "#F5F5F5", minHeight: "100vh", fontFamily: "'Tajawal', sans-serif", padding: "40px 20px" }}>
+    <div dir="rtl" style={{ background: "#15100C", color: "#F7F1E6", minHeight: "100vh", fontFamily: "'Tajawal', sans-serif", padding: "40px 20px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <a href="/" style={{ color: "#F5F5F5", fontSize: 13, opacity: 0.7, textDecoration: "underline" }}>← الرجوع لمتجر بطاطا</a>
+        <a href="/" style={{ color: "#EFA53C", fontSize: 13, textDecoration: "underline" }}>← الرجوع لمتجر بطاطا</a>
         <h1 style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif", fontSize: 28, fontWeight: 800, margin: "20px 0 24px" }}>شروط الاستخدام</h1>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 15, lineHeight: 1.9, opacity: 0.85 }}>
           <p>مرحبًا بك في متجر بطاطا. باستخدامك لهذا الموقع فإنك توافق على الشروط التالية:</p>
-          <p><b style={{ color: "#fff" }}>1. طبيعة المتجر:</b> متجر بطاطا منصة مستقلة لبيع حسابات جاهزة، وغير تابع لأي جهة أو شركة خارجية.</p>
-          <p><b style={{ color: "#fff" }}>2. المنتجات:</b> نبيع حسابات جاهزة فقط. التسليم يتم إلكترونيًا عبر البريد الإلكتروني بعد إتمام الدفع.</p>
-          <p><b style={{ color: "#fff" }}>3. مسؤولية المستخدم:</b> يجب أن تكون بياناتك (بريدك الإلكتروني) صحيحة عند الطلب، ونحن غير مسؤولين عن أي خطأ ناتج عن بيانات غير صحيحة أدخلها المستخدم.</p>
-          <p><b style={{ color: "#fff" }}>4. الأسعار:</b> جميع الأسعار معروضة بالدينار البحريني وقابلة للتغيير دون إشعار مسبق.</p>
-          <p><b style={{ color: "#fff" }}>5. الاستخدام المقبول:</b> يُمنع استخدام الموقع لأي غرض غير قانوني أو محاولة الإضرار به.</p>
+          <p><b style={{ color: "#F5C874" }}>1. طبيعة المتجر:</b> متجر بطاطا منصة مستقلة لبيع حسابات جاهزة، وغير تابع لأي جهة أو شركة خارجية.</p>
+          <p><b style={{ color: "#F5C874" }}>2. المنتجات:</b> نبيع حسابات جاهزة فقط. التسليم يتم إلكترونيًا عبر البريد الإلكتروني بعد إتمام الدفع.</p>
+          <p><b style={{ color: "#F5C874" }}>3. مسؤولية المستخدم:</b> يجب أن تكون بياناتك (بريدك الإلكتروني) صحيحة عند الطلب، ونحن غير مسؤولين عن أي خطأ ناتج عن بيانات غير صحيحة أدخلها المستخدم.</p>
+          <p><b style={{ color: "#F5C874" }}>4. الأسعار:</b> جميع الأسعار معروضة بالدينار البحريني وقابلة للتغيير دون إشعار مسبق.</p>
+          <p><b style={{ color: "#F5C874" }}>5. الاستخدام المقبول:</b> يُمنع استخدام الموقع لأي غرض غير قانوني أو محاولة الإضرار به.</p>
           <p>لأي استفسار حول هذه الشروط، تواصل معنا على {SUPPORT_EMAIL}</p>
         </div>
       </div>
