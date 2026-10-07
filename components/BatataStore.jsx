@@ -81,11 +81,11 @@ const round3 = (n) => Math.round(n * 1000) / 1000;
 const USD_PER_BHD = 2.65957;
 const CURRENCIES = ["BHD", "SAR", "AED", "KWD", "QAR", "OMR", "USD", "EUR", "EGP"];
 
-function CurrencyPicker({ currency, onChange, className = "" }) {
+function CurrencyPicker({ currency, onChange, block = false }) {
   const opts = Array.from(new Set(["BHD", currency.code, ...CURRENCIES]));
   return (
     <select value={currency.code} onChange={e => onChange(e.target.value)} aria-label="العملة"
-      className={`c-fill rounded-xl px-2.5 py-2.5 text-xs font-bold outline-none ${className}`}>
+      className={block ? "w-full c-fill border c-border-line-strong rounded-xl px-3 py-3 text-sm font-bold outline-none" : "c-fill rounded-xl px-2.5 py-2.5 text-xs font-bold outline-none"}>
       {opts.map(c => <option key={c} value={c}>{c === "BHD" ? "BHD (د.ب)" : c}</option>)}
     </select>
   );
@@ -330,23 +330,44 @@ function MobileMenu({ open, close, go, user, onOpenAuth, currency, onCurrency })
     { id: "contact", label: "تواصل معنا", icon: Phone },
     { id: user ? (user.isAdmin ? "admin" : "orders") : null, label: user ? (user.isAdmin ? "لوحة التحكم" : "حسابي") : "تسجيل الدخول", icon: LogIn },
   ];
+  const lbl = "text-xs font-bold c-text-dim2 mb-1.5 block";
   return (
-    <div className="fixed inset-0 z-50 c-bg90 backdrop-blur-lg flex flex-col p-6 md:hidden">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-2"><span className="font-extrabold text-lg" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>متجر بطاطا</span></div>
-        <button onClick={close} className="p-2 rounded-lg c-fill"><X size={20} /></button>
+    <div className="fixed inset-0 z-50 c-bg90 backdrop-blur-lg flex flex-col p-5 md:hidden overflow-y-auto">
+      <div className="flex justify-between items-center mb-6">
+        <span className="font-extrabold text-lg" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>متجر بطاطا</span>
+        <button onClick={close} aria-label="إغلاق" className="p-2 rounded-lg c-fill"><X size={20} /></button>
+      </div>
+
+      <div className="flex items-center gap-3 mb-3">
+        <h3 className="text-xs font-extrabold c-accent whitespace-nowrap">العملة واللغة</h3>
+        <div className="flex-1 border-t c-border-line" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-7">
+        <div>
+          <label className={lbl}>العملة</label>
+          <CurrencyPicker currency={currency} onChange={onCurrency} block />
+        </div>
+        <div>
+          <label className={lbl}>اللغة</label>
+          <select value="ar" onChange={() => {}} aria-label="اللغة" className="w-full c-fill border c-border-line-strong rounded-xl px-3 py-3 text-sm font-bold outline-none">
+            <option value="ar">العربية</option>
+            <option value="en" disabled>English (قريبًا)</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 mb-3">
+        <h3 className="text-xs font-extrabold c-accent whitespace-nowrap">روابط مهمة</h3>
+        <div className="flex-1 border-t c-border-line" />
       </div>
       <div className="flex flex-col gap-2">
         {NAV.map(n => (
           <button key={n.label} onClick={() => { if (n.id) go(n.id); else onOpenAuth(); close(); }}
-            className="flex items-center gap-3 px-4 py-3.5 rounded-xl c-fill text-right font-bold c-fs-15">
-            <n.icon size={18} className="c-text" /> {n.label}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl c-fill text-right font-bold c-fs-15">
+            <span className="w-9 h-9 rounded-lg c-accent-soft-bg c-accent flex items-center justify-center shrink-0"><n.icon size={18} /></span>
+            {n.label}
           </button>
         ))}
-      </div>
-      <div className="flex items-center justify-between gap-3 mt-4 px-1">
-        <span className="text-sm font-bold c-text-dim">العملة المعروضة</span>
-        <CurrencyPicker currency={currency} onChange={onCurrency} />
       </div>
     </div>
   );
@@ -389,6 +410,9 @@ function HomePage({ products, categories, reviews, go, addToCart, bestsellerIds 
   const featured = products.filter(p => p.featured);
   const offers = products.filter(p => p.oldPrice);
   const withDiscount = products.map(p => p.oldPrice ? { ...p, discount: Math.round((1 - p.price / p.oldPrice) * 100) } : p);
+  const best = withDiscount.filter(p => bestsellerIds?.includes(p.id)).slice(0, 4);
+  const hotMode = best.length ? "best" : offers.length ? "offers" : null;
+  const hotList = hotMode === "best" ? best : withDiscount.filter(p => p.oldPrice).slice(0, 4);
 
   return (
     <div>
@@ -397,46 +421,34 @@ function HomePage({ products, categories, reviews, go, addToCart, bestsellerIds 
         <div className="absolute inset-0 c-opacity-08" style={{ backgroundImage: "linear-gradient(var(--text) 1px, transparent 1px), linear-gradient(90deg, var(--text) 1px, transparent 1px)", backgroundSize: "34px 34px" }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[560px] rounded-full pointer-events-none"
           style={{ background: "radial-gradient(circle, var(--accent-soft), transparent 70%)" }} />
-        <div className="max-w-6xl mx-auto px-4 py-16 md:py-24 relative text-center flex flex-col items-center">
-          <Badge className="c-accent-soft-bg c-accent border-0 mb-5">وجهتك الموثوقة لحسابات جاهزة</Badge>
-          <h1 className="font-extrabold text-3xl md:text-5xl leading-tight max-w-3xl flex items-center gap-3 flex-wrap justify-center" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
-            <span className="text-4xl md:text-6xl c-glow-dot inline-block">🥔</span>
+        <div className="max-w-6xl mx-auto px-4 py-8 md:py-16 relative text-center flex flex-col items-center">
+          <h1 className="font-extrabold text-2xl md:text-5xl leading-tight max-w-3xl" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
             كل الحسابات اللي تدور عليها... في مكان واحد
           </h1>
-          <p className="c-text-dim mt-5 max-w-xl leading-8">حسابات مبتدئين، مميزة، VIP ونخبة — بتوثيق واضح وتسليم فوري بعد الدفع.</p>
-          <div className="flex flex-wrap gap-3 justify-center mt-8">
-            <button onClick={() => go("shop")} className="px-6 py-3.5 rounded-xl c-cta font-extrabold transition">تصفح المتجر</button>
-            <button onClick={() => go("shop", { offersOnly: true })} className="px-6 py-3.5 rounded-xl c-fill hover:c-fill-strong font-extrabold transition">شاهد العروض 🔥</button>
+          <div className="flex flex-wrap gap-3 justify-center mt-5">
+            <button onClick={() => go("shop")} className="px-6 py-3 rounded-xl c-cta font-extrabold transition">تصفح المتجر</button>
+            <button onClick={() => go("shop", { offersOnly: true })} className="px-6 py-3 rounded-xl c-fill hover:c-fill-strong font-extrabold transition">شاهد العروض 🔥</button>
           </div>
         </div>
       </section>
 
-      {/* TRUST */}
-      {(() => {
-        const rs = reviews || [];
-        const avg = rs.length ? (rs.reduce((t, r) => t + (Number(r.rating) || 0), 0) / rs.length).toFixed(1) : null;
-        const cells = [
-          ["⚡", "تسليم آلي", "بعد تأكيد الدفع"],
-          ["🔒", "دفع آمن", "عبر PayPal"],
-          avg ? ["⭐", avg + " / 5", rs.length + " تقييم"] : ["🛟", "دعم مباشر", "شات الموقع وDiscord"],
-        ];
-        return (
-          <section className="max-w-6xl mx-auto px-4 pt-2">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {cells.map(([ic, t, d]) => (
-                <div key={t} className="c-surface border c-border-line rounded-xl py-3 px-2">
-                  <div className="text-lg">{ic}</div>
-                  <div className="font-extrabold text-xs mt-1">{t}</div>
-                  <div className="c-fs-10-5 c-text-dim2">{d}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        );
-      })()}
+      {/* HOT */}
+      {hotMode && (
+        <section className="max-w-6xl mx-auto px-4 pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-extrabold text-xl flex items-center gap-2" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
+              <span className="text-2xl">🔥</span> {hotMode === "best" ? "الأكثر مبيعًا" : "العروض الحارة"}
+            </h2>
+            <button onClick={() => go("shop", hotMode === "best" ? {} : { offersOnly: true })} className="text-xs font-bold c-text-dim">عرض الكل ←</button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {hotList.map(p => <ProductCard key={p.id} p={p} go={go} addToCart={addToCart} bestseller={bestsellerIds?.includes(p.id)} />)}
+          </div>
+        </section>
+      )}
 
       {/* CATEGORIES */}
-      <section className="max-w-6xl mx-auto px-4 py-14">
+      <section className="max-w-6xl mx-auto px-4 py-10">
         <h2 className="font-extrabold text-xl mb-8" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>الأقسام</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 gap-y-8">
           {categories.map(c => (
@@ -466,7 +478,7 @@ function HomePage({ products, categories, reviews, go, addToCart, bestsellerIds 
       </section>
 
       {/* OFFERS */}
-      {offers.length > 0 && (
+      {offers.length > 0 && hotMode !== "offers" && (
         <section className="max-w-6xl mx-auto px-4 py-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-extrabold text-xl flex items-center gap-2" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>
@@ -480,7 +492,7 @@ function HomePage({ products, categories, reviews, go, addToCart, bestsellerIds 
       )}
 
       {/* WHY US */}
-      <section className="max-w-6xl mx-auto px-4 py-14">
+      <section className="max-w-6xl mx-auto px-4 py-8">
         <h2 className="font-extrabold text-xl mb-6 text-center" style={{ fontFamily: "'Baloo Bhaijaan 2', sans-serif" }}>ليش متجر بطاطا؟</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
@@ -498,6 +510,30 @@ function HomePage({ products, categories, reviews, go, addToCart, bestsellerIds 
           ))}
         </div>
       </section>
+
+      {/* TRUST */}
+      {(() => {
+        const rs = reviews || [];
+        const avg = rs.length ? (rs.reduce((t, r) => t + (Number(r.rating) || 0), 0) / rs.length).toFixed(1) : null;
+        const cells = [
+          ["⚡", "تسليم آلي", "بعد تأكيد الدفع"],
+          ["🔒", "دفع آمن", "عبر PayPal"],
+          avg ? ["⭐", avg + " / 5", rs.length + " تقييم"] : ["🛟", "دعم مباشر", "الشات وديسكورد"],
+        ];
+        return (
+          <section className="max-w-6xl mx-auto px-4 pb-8">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {cells.map(([ic, t, d]) => (
+                <div key={t} className="c-surface border c-border-line rounded-xl py-3 px-2">
+                  <div className="text-lg">{ic}</div>
+                  <div className="font-extrabold text-xs mt-1">{t}</div>
+                  <div className="c-fs-10-5 c-text-dim2">{d}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* REVIEWS - حقيقية فقط، مربوطة بطلبات فعلية */}
       <section className="max-w-6xl mx-auto px-4 py-14">
