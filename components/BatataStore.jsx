@@ -1386,7 +1386,7 @@ function SupportInbox({ addToast }) {
           </button>
         ))}
       </div>
-      <div className="c-surface border c-border-line rounded-xl flex flex-col" style={{ height: 480 }}>
+      <div className={`c-surface border c-border-line rounded-xl flex-col ${activeSession ? "flex" : "hidden md:flex"}`} style={{ height: 480 }}>
         {!activeSession ? (
           <div className="flex-1 flex items-center justify-center c-text-dim2 text-sm">اختر محادثة من القائمة</div>
         ) : (
@@ -1639,7 +1639,7 @@ function CouponsManager({ addToast }) {
         <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">الكود</label><input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="BATATA20" className={inp} dir="ltr" /></div>
         <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">نسبة الخصم %</label><input value={form.percent} onChange={e => setForm(f => ({ ...f, percent: e.target.value }))} type="number" className={inp} dir="ltr" /></div>
         <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">أقصى استخدام (اختياري)</label><input value={form.max_uses} onChange={e => setForm(f => ({ ...f, max_uses: e.target.value }))} type="number" className={inp} dir="ltr" /></div>
-        <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">ينتهي في (اختياري)</label><input value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))} type="date" className={inp} dir="ltr" /></div>
+        <div><label className="text-xs font-bold c-text-dim2 block mb-1.5">ينتهي في (اختياري)</label><input value={form.expires_at} onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))} type="date" className={inp} /></div>
         <button onClick={add} className="col-span-2 py-2.5 rounded-lg c-cta font-extrabold text-sm">إضافة</button>
       </div>
       <div className="flex flex-col gap-2">
@@ -2187,8 +2187,8 @@ function ChatWidget({ user, onOpenAuth }) {
           </div>
         </div>
       )}
-      <button onClick={bubbleClick} className="relative c-bg-text c-text-bg rounded-full w-14 h-14 flex items-center justify-center shadow-2xl">
-        <MessageCircle size={24} />
+      <button onClick={bubbleClick} className="relative c-bg-text c-text-bg rounded-full w-12 h-12 flex items-center justify-center shadow-xl opacity-90">
+        <MessageCircle size={20} />
         {unread > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center">{unread}</span>}
       </button>
     </div>
@@ -2618,7 +2618,7 @@ export default function BatataStore() {
           : <div className="max-w-md mx-auto px-4 py-24 text-center c-text-dim2">هذه الصفحة خاصة بالأدمن فقط.</div>)}
       </main>
 
-      <ChatWidget user={user} onOpenAuth={() => setAuthModalOpen(true)} />
+      {page !== "admin" && <ChatWidget user={user} onOpenAuth={() => setAuthModalOpen(true)} />}
       <Footer go={go} settings={settings} />
       <div className="h-16 md:hidden" />
       <BottomNav page={page} go={go} cartCount={cartCount} user={user} onOpenAuth={() => setAuthModalOpen(true)} />
