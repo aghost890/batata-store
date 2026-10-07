@@ -9,7 +9,7 @@ import {
   Store, Tag, HelpCircle, Phone, Instagram, MessageCircle, Clock,
   Shield, Zap, Headphones, TrendingUp, Sparkles, Edit3, Check, LayoutGrid,
   Sun, Moon, Send,
-  Ticket,
+  Ticket, Users,
 } from "lucide-react";
 
 /* ============================= theme tokens ============================= */
@@ -619,7 +619,7 @@ function ShopPage({ products, categories, go, addToCart, initialFilters, bestsel
       </div>
 
       {list.length === 0 ? (
-        <div className="text-center py-20 c-text-dim2">ما فيه منتجات مطابقة لبحثك 🥔</div>
+        <div className="text-center py-20 c-text-dim2">{products.length === 0 ? "لا توجد منتجات حاليًا 🥔" : "ما فيه منتجات مطابقة لبحثك 🥔"}</div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {list.map(p => <ProductCard key={p.id} p={p.oldPrice ? { ...p, discount: Math.round((1 - p.price / p.oldPrice) * 100) } : p} go={go} addToCart={addToCart} bestseller={bestsellerIds?.includes(p.id)} />)}
@@ -1862,7 +1862,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
         </div>
         <button onClick={logout} className="c-fs-12 font-bold c-text-dim2 hover:c-text px-3 py-2 rounded-lg c-fill">تسجيل خروج</button>
       </div>
-      <p className="text-xs c-text-dim2 mb-5">مسجّل دخول كـ {userEmail} — البيانات هنا حقيقية ومتصلة بقاعدة بيانات Supabase، تظهر لكل زوار الموقع.</p>
+      <p className="text-xs c-text-dim2 mb-5">مسجّل دخول كـ {userEmail}</p>
 
       <div className="grid grid-cols-3 gap-2.5 mb-6">
         <div className="c-surface border c-border-line rounded-xl px-3.5 py-3">
@@ -1890,7 +1890,7 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
       <div className="flex gap-1.5 mb-6 flex-wrap border-b c-border-line pb-3">
         {[
           ["products", "المنتجات", Package], ["categories", "الأقسام", LayoutGrid], ["stock", "المخزون", Store], ["coupons", "الكوبونات", Ticket],
-          ["orders", "الطلبات", ShoppingCart], ["customers", "العملاء", LogIn], ["support", "الدعم الفني", Headphones],
+          ["orders", "الطلبات", ShoppingCart], ["customers", "العملاء", Users], ["support", "الدعم الفني", Headphones],
           ["stats", "الإحصائيات", TrendingUp], ["settings", "الإعدادات", Settings],
         ].map(([id, label, Icon]) => (
           <button key={id} onClick={() => setTab(id)}
@@ -2278,10 +2278,10 @@ function Footer({ go, settings }) {
         </div>
         <div>
           <div className="font-bold mb-3 text-xs c-text-dim2">تابعنا</div>
-          <div className="flex gap-2">
-            {settings?.discord_url && <a href={settings.discord_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><MessageCircle size={15}/></a>}
-            {settings?.instagram_url && <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><Instagram size={15}/></a>}
-            {settings?.tiktok_url && <a href={settings.tiktok_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg c-fill"><TrendingUp size={15}/></a>}
+          <div className="flex flex-wrap gap-2">
+            {[["discord_url", "Discord"], ["instagram_url", "Instagram"], ["tiktok_url", "TikTok"], ["whatsapp_url", "واتساب"]].map(([k, l]) =>
+              settings?.[k] ? <a key={k} href={settings[k]} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg c-fill c-fs-12-5 font-bold">{l}</a> : null
+            )}
           </div>
         </div>
       </div>
