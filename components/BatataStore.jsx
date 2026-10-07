@@ -78,6 +78,19 @@ const SEED_PRODUCTS = [
 
 const CurrencyContext = React.createContext({ code: "BHD", rate: 1 });
 const round3 = (n) => Math.round(n * 1000) / 1000;
+
+async function fetchStockCount(pid) {
+  const { data, error } = await supabase.rpc("stock_count", { p_product_id: String(pid) });
+  if (!error) return typeof data === "number" ? data : null;
+  const { data: v } = await supabase.from("account_stock_available_counts").select("available_count").eq("product_id", pid).maybeSingle();
+  return typeof v?.available_count === "number" ? v.available_count : null;
+}
+async function fetchStockCounts() {
+  const { data, error } = await supabase.rpc("stock_counts");
+  if (!error) return data || [];
+  const { data: v } = await supabase.from("account_stock_available_counts").select("product_id,available_count");
+  return v || [];
+}
 const USD_PER_BHD = 2.65957;
 const CURRENCIES = ["BHD", "SAR", "AED", "KWD", "QAR", "OMR", "USD", "EUR", "EGP"];
 
@@ -676,9 +689,7 @@ function ProductPage({ products, id, go, addToCart }) {
 
   useEffect(() => {
     if (!p) return;
-    supabase.from("account_stock_available_counts").select("available_count").eq("product_id", p.id).maybeSingle()
-      .then(({ data }) => setLiveStock(typeof data?.available_count === "number" ? data.available_count : null))
-      .catch(() => {});
+    fetchStockCount(p.id).then(setLiveStock).catch(() => {});
   }, [p?.id]);
 
   if (!p) return <div className="max-w-6xl mx-auto px-4 py-20 text-center c-text-dim2">المنتج غير موجود</div>;
@@ -1704,9 +1715,9 @@ function AdminPage({ products, categories, refreshProducts, refreshCategories, a
   const [orderStatus, setOrderStatus] = useState("all");
   const [lowStock, setLowStock] = useState([]);
   useEffect(() => {
-    supabase.from("account_stock_available_counts").select("product_id,available_count")
-      .then(({ data }) => {
-        const low = (data || []).filter(r => Number(r.available_count) <= 3).map(r => ({
+    fetchStockCounts()
+      .then((rows) => {
+        const low = (rows || []).filter(r => Number(r.available_count) <= 3).map(r => ({
           name: products.find(pr => String(pr.id) === String(r.product_id))?.name || String(r.product_id),
           n: Number(r.available_count),
         }));
@@ -2340,15 +2351,9 @@ export default function BatataStore() {
   }
   async function computeBestsellers() {
     try {
-      const { data } = await supabase.from("orders").select("items").eq("status", "مكتمل").limit(500);
+      const { data } = await supabase.rpc("best_seller_ids", { p_limit: 3 });
       if (!data) return;
-      const qtyByProduct = {};
-      data.forEach(o => (o.items || []).forEach(i => {
-        if (!i.productId) return;
-        qtyByProduct[i.productId] = (qtyByProduct[i.productId] || 0) + (i.qty || 1);
-      }));
-      const top = Object.entries(qtyByProduct).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
-      setBestsellerIds(top);
+      setBestsellerIds(data.map(r => r.product_id));
     } catch (_) {}
   }
   function chooseCurrency(code) {
