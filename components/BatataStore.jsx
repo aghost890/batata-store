@@ -79,6 +79,15 @@ const SEED_PRODUCTS = [
 const CurrencyContext = React.createContext({ code: "BHD", rate: 1 });
 const round3 = (n) => Math.round(n * 1000) / 1000;
 
+async function fnErrorMessage(error, data) {
+  if (typeof data?.error === "string") return data.error;
+  try {
+    const body = await error?.context?.json?.();
+    if (typeof body?.error === "string") return body.error;
+  } catch (_) {}
+  return null;
+}
+
 async function fetchStockCount(pid) {
   const { data, error } = await supabase.rpc("stock_count", { p_product_id: String(pid) });
   if (!error) return typeof data === "number" ? data : null;
@@ -865,21 +874,32 @@ function CheckoutPage({ cart, products, go, user }) {
     paypalContainerRef.current.innerHTML = "";
     window.paypal.Buttons({
       createOrder: async () => {
-        const { data, error } = await supabase.functions.invoke("paypal-create-order", { body: { amountBHD: total, coupon: applied?.code || null } });
-        if (error || !data?.id) { setPaypalError("تعذّر إنشاء طلب الدفع."); throw new Error("create order failed"); }
+        setPaypalError("");
+        const { data, error } = await supabase.functions.invoke("paypal-create-order", {
+          body: { items: items.map(i => ({ productId: i.productId, qty: i.qty })), coupon: applied?.code || null },
+        });
+        if (error || !data?.id) {
+          const msg = await fnErrorMessage(error, data);
+          setPaypalError(msg ? "تعذّر إنشاء طلب الدفع: " + msg : "تعذّر إنشاء طلب الدفع.");
+          throw new Error("create order failed");
+        }
         return data.id;
       },
       onApprove: async (data) => {
         const { data: res, error } = await supabase.functions.invoke("paypal-capture-order", {
-          body: { orderID: data.orderID, items, totalBHD: total, coupon: applied?.code || null, email: emailRef.current.trim(), orderCode },
+          body: { orderID: data.orderID, items: items.map(i => ({ productId: i.productId, qty: i.qty })), coupon: applied?.code || null, email: emailRef.current.trim(), orderCode },
         });
-        if (error || !res?.success) { setPaypalError("تم الدفع لكن حدث خطأ بتسجيل الطلب، تواصل معنا بإرفاق رقم العملية."); return; }
+        if (error || !res?.success) {
+          const msg = await fnErrorMessage(error, res);
+          setPaypalError("تعذّر إتمام الطلب" + (msg ? " (" + msg + ")" : "") + ". إذا انخصم منك مبلغ تواصل معنا وأرفق رقم العملية: " + data.orderID);
+          return;
+        }
         setPaypalError("");
         window.location.hash = "";
         alert("تم الدفع بنجاح ✓ رقم طلبك #" + res.orderId);
         window.location.reload();
       },
-      onError: () => setPaypalError("حدث خطأ أثناء الدفع عبر PayPal، حاول مرة أخرى."),
+      onError: () => setPaypalError(prev => prev || "حدث خطأ أثناء الدفع عبر PayPal، حاول مرة أخرى."),
     }).render(paypalContainerRef.current);
   }, [paypalReady, emailValid, total, applied?.code]);
 
